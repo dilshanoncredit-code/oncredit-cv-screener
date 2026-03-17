@@ -1,0 +1,718 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OnCredit — CV Screener</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f2f2ef;color:#1a1a1a;min-height:100vh}
+
+/* TOP BAR */
+.topbar{background:#0a1628;padding:0 24px;display:flex;align-items:center;gap:20px;flex-wrap:wrap;min-height:60px}
+.logo{display:flex;align-items:center;gap:10px}
+.logo-icon{width:34px;height:34px;background:#2563eb;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:900;color:#fff;letter-spacing:-1px}
+.logo-text{font-size:16px;font-weight:700;color:#fff}
+.logo-sub{font-size:11px;color:#94a3b8;margin-top:1px}
+.topbar-right{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-left:auto}
+.topbar-right label{font-size:12px;color:#94a3b8;font-weight:600;white-space:nowrap}
+.topbar-right input{padding:6px 12px;border:1px solid #334155;border-radius:7px;font-size:12px;font-family:monospace;width:240px;background:#1e293b;color:#e2e8f0}
+.topbar-right input:focus{outline:none;border-color:#2563eb}
+.key-ok{background:#166534;color:#bbf7d0;font-size:11px;padding:3px 9px;border-radius:20px;font-weight:700}
+.key-no{background:#7f1d1d;color:#fecaca;font-size:11px;padding:3px 9px;border-radius:20px;font-weight:700}
+.key-na{background:#1e293b;color:#64748b;font-size:11px;padding:3px 9px;border-radius:20px}
+
+/* DEPT SELECTOR BAR */
+.deptbar{background:#fff;border-bottom:1px solid #e5e7eb;padding:12px 24px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.deptbar-label{font-size:12px;font-weight:700;color:#6b7280;margin-right:4px;white-space:nowrap}
+.dept-pill{padding:5px 12px;border-radius:20px;font-size:12px;font-weight:600;cursor:pointer;border:1.5px solid #e5e7eb;background:#f9fafb;color:#374151;transition:all .15s;white-space:nowrap}
+.dept-pill.on{border-color:var(--dc);background:var(--db);color:var(--dc)}
+.dept-pill:hover{border-color:var(--dc);background:var(--db)}
+
+/* LAYOUT */
+.container{max-width:1200px;margin:0 auto;padding:20px 18px}
+.tabs{display:flex;gap:0;border-bottom:1px solid #e5e7eb;margin-bottom:20px}
+.tab{padding:9px 18px;font-size:13px;cursor:pointer;border:none;background:none;color:#9ca3af;border-bottom:2px solid transparent;margin-bottom:-1px;font-weight:600;transition:color .15s}
+.tab.on{color:#2563eb;border-bottom:2px solid #2563eb}
+.pane{display:none}.pane.on{display:block}
+
+/* UPLOAD */
+.dz{border:2px dashed #d1d5db;border-radius:12px;padding:36px 24px;text-align:center;cursor:pointer;transition:all .15s;background:#fff}
+.dz:hover,.dz.over{background:#eff6ff;border-color:#2563eb}
+.dz-ico{font-size:40px;margin-bottom:10px}
+.dz h2{font-size:16px;font-weight:700;color:#111827;margin-bottom:4px}
+.dz p{font-size:13px;color:#9ca3af}
+.fq{margin-top:10px;display:flex;flex-direction:column;gap:5px}
+.fi{display:flex;align-items:center;gap:10px;padding:8px 14px;background:#fff;border:1px solid #e5e7eb;border-radius:8px;font-size:13px}
+.fi-name{flex:1;font-weight:500;color:#374151;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.fi-size{color:#9ca3af;font-size:11px;flex-shrink:0}
+.btn{padding:8px 16px;border-radius:8px;font-size:13px;cursor:pointer;border:1px solid #d1d5db;background:#fff;color:#374151;font-weight:600;transition:all .1s}
+.btn:hover{background:#f3f4f6}
+.btn-p{background:#2563eb;color:#fff;border-color:#2563eb}.btn-p:hover{background:#1d4ed8}
+.btn-g{background:#166534;color:#fff;border-color:#166534}.btn-g:hover{background:#14532d}
+.btn-row{display:flex;gap:10px;margin-top:12px;flex-wrap:wrap}
+.bdg{display:inline-block;padding:2px 9px;border-radius:20px;font-size:11px;font-weight:700}
+.bdg-g{background:#dcfce7;color:#166534}
+.bdg-a{background:#fef3c7;color:#92400e}
+.bdg-r{background:#fee2e2;color:#991b1b}
+.bdg-b{background:#dbeafe;color:#1e40af}
+.bdg-gr{background:#f3f4f6;color:#6b7280}
+
+/* STATS */
+.stats{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:18px}
+.stat{background:#fff;border:1px solid #e5e7eb;border-radius:10px;padding:12px 14px;text-align:center}
+.stat .n{font-size:24px;font-weight:800}
+.stat .l{font-size:11px;color:#9ca3af;margin-top:2px;font-weight:600}
+
+/* FILTERS */
+.fil{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;align-items:center}
+.fil select{padding:7px 12px;border:1px solid #d1d5db;border-radius:8px;font-size:13px;background:#fff;color:#374151;font-weight:500}
+
+/* CARDS */
+.cards{display:flex;flex-direction:column;gap:12px}
+.card{background:#fff;border:1px solid #e5e7eb;border-radius:12px;overflow:hidden;transition:box-shadow .15s}
+.card:hover{box-shadow:0 2px 12px rgba(0,0,0,.08)}
+.card.s{border-left:4px solid #16a34a}
+.card.rv{border-left:4px solid #d97706}
+.card.u{border-left:4px solid #dc2626}
+.card-top{display:flex;align-items:flex-start;gap:12px;padding:14px 16px 10px}
+.av{width:44px;height:44px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:800;flex-shrink:0}
+.ci{flex:1;min-width:0}
+.cn{font-size:15px;font-weight:700;color:#111827;margin-bottom:4px;display:flex;flex-wrap:wrap;align-items:center;gap:5px}
+.cm{font-size:12px;color:#6b7280;margin-bottom:6px}
+.sb{display:flex;align-items:center;gap:10px}
+.st{flex:1;height:5px;background:#f3f4f6;border-radius:3px;overflow:hidden}
+.sf{height:100%;border-radius:3px;transition:width .5s}
+.cact{display:flex;gap:6px;flex-shrink:0;align-items:flex-start;flex-wrap:wrap}
+
+/* DEPT TAGS on card */
+.dept-tags{display:flex;flex-wrap:wrap;gap:5px;padding:8px 16px;border-top:1px solid #f3f4f6;background:#fafafa}
+.dept-tag{display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:20px;font-size:11px;font-weight:700;border:1px solid}
+
+/* INFO GRID */
+.ig-section{border-top:1px solid #f3f4f6}
+.ig-title{padding:8px 16px 2px;font-size:10px;font-weight:800;color:#9ca3af;text-transform:uppercase;letter-spacing:.6px}
+.info-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(175px,1fr));padding:4px 8px 10px}
+.ig{padding:5px 8px}
+.ig-label{font-size:10px;font-weight:700;color:#d1d5db;text-transform:uppercase;letter-spacing:.4px;margin-bottom:2px}
+.ig-val{font-size:13px;color:#111827;font-weight:500;word-break:break-word;line-height:1.4}
+.ig-val a{color:#2563eb;text-decoration:none}
+.ig-val a:hover{text-decoration:underline}
+.ig-val.empty{color:#d1d5db;font-style:italic;font-weight:400;font-size:12px}
+
+/* ASSESSMENT */
+.assessment{padding:10px 16px 14px;background:#fafafa;border-top:1px solid #f3f4f6}
+.assess-label{font-size:10px;font-weight:800;color:#9ca3af;text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px}
+.assess-reason{font-size:13px;color:#374151;line-height:1.65;margin-bottom:8px}
+.skills-row{display:flex;flex-wrap:wrap;gap:5px}
+
+/* VIEW CV BUTTON */
+.view-cv-btn{display:inline-flex;align-items:center;gap:5px;padding:5px 12px;border-radius:7px;font-size:12px;font-weight:600;cursor:pointer;border:1.5px solid #2563eb;background:#eff6ff;color:#2563eb;transition:all .1s}
+.view-cv-btn:hover{background:#dbeafe}
+
+.sel-row{display:flex;align-items:center;gap:8px;margin-bottom:10px;font-size:13px;color:#6b7280}
+.empty-state{text-align:center;padding:40px;color:#9ca3af;font-size:14px}
+.err{background:#fee2e2;border:1px solid #fca5a5;border-radius:8px;padding:10px 14px;font-size:13px;color:#991b1b;margin-top:10px}
+.info-box{background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:10px 14px;font-size:13px;color:#1e40af;margin-bottom:16px;line-height:1.6}
+.prog-wrap{margin-top:12px;display:none}
+.prog-bar{height:7px;background:#e5e7eb;border-radius:4px;overflow:hidden;margin-top:6px}
+.prog-fill{height:100%;background:#2563eb;border-radius:4px;transition:width .3s}
+.prog-txt{font-size:13px;color:#6b7280}
+
+/* MODAL */
+.mbg{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.55);display:none;align-items:center;justify-content:center;z-index:999}
+.mbg.on{display:flex}
+.modal{background:#fff;border-radius:14px;border:1px solid #e5e7eb;padding:22px;width:94%;max-width:480px;max-height:90vh;overflow-y:auto;box-shadow:0 8px 40px rgba(0,0,0,.2)}
+.modal h2{font-size:17px;font-weight:700;margin-bottom:14px}
+.ml{font-size:13px;color:#6b7280;display:block;margin:10px 0 4px;font-weight:600}
+.modal input,.modal textarea,.modal select{width:100%;padding:8px 12px;border:1px solid #d1d5db;border-radius:8px;font-size:13px;background:#f9fafb;color:#1a1a1a}
+.modal input:focus,.modal textarea:focus,.modal select:focus{outline:none;border-color:#2563eb}
+.modal textarea{min-height:90px;resize:vertical}
+.mf{display:flex;gap:10px;justify-content:flex-end;margin-top:14px}
+
+/* CV VIEWER MODAL */
+.cv-modal{background:#fff;border-radius:14px;border:1px solid #e5e7eb;width:96%;max-width:860px;height:88vh;display:flex;flex-direction:column;box-shadow:0 8px 40px rgba(0,0,0,.25);overflow:hidden}
+.cv-modal-header{display:flex;align-items:center;justify-content:space-between;padding:14px 20px;border-bottom:1px solid #e5e7eb;flex-shrink:0}
+.cv-modal-header h2{font-size:16px;font-weight:700}
+.cv-iframe-wrap{flex:1;overflow:hidden;background:#525659}
+.cv-iframe-wrap iframe{width:100%;height:100%;border:none}
+.cv-iframe-wrap .cv-docx-preview{width:100%;height:100%;overflow-y:auto;background:#fff;padding:20px}
+
+/* SETTINGS */
+.scard{background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:18px;margin-bottom:14px}
+.scard h3{font-size:15px;font-weight:700;margin-bottom:12px}
+.scard label{font-size:13px;color:#6b7280;display:flex;gap:10px;align-items:flex-start;margin-bottom:9px;line-height:1.5;cursor:pointer}
+.scard label input[type=checkbox]{margin-top:2px;flex-shrink:0;width:15px;height:15px}
+.scard textarea{width:100%;padding:9px 12px;border:1px solid #d1d5db;border-radius:8px;font-size:13px;background:#f9fafb;color:#1a1a1a;resize:vertical}
+
+@media(max-width:680px){
+  .topbar{flex-direction:column;align-items:flex-start;padding:12px 16px;gap:10px}
+  .topbar-right input{width:180px}
+  .stats{grid-template-columns:repeat(3,1fr)}
+  .cact{flex-wrap:wrap}
+  .info-grid{grid-template-columns:repeat(2,1fr)}
+}
+</style>
+</head>
+<body>
+
+<!-- TOP BAR -->
+<div class="topbar">
+  <div class="logo">
+    <div class="logo-icon">OC</div>
+    <div>
+      <div class="logo-text">OnCredit</div>
+      <div class="logo-sub">CV Screener</div>
+    </div>
+  </div>
+  <div class="topbar-right">
+    <label>Anthropic API Key:</label>
+    <input type="password" id="apiKey" placeholder="sk-ant-api03-..." oninput="checkKey()">
+    <span id="keyStatus" class="key-na">Not set</span>
+  </div>
+</div>
+
+<!-- DEPARTMENT FILTER BAR -->
+<div class="deptbar">
+  <span class="deptbar-label">Show department:</span>
+  <button class="dept-pill on" data-dept="all" style="--dc:#2563eb;--db:#eff6ff" onclick="filterDept('all',this)">All Departments</button>
+  <button class="dept-pill" data-dept="Collection" style="--dc:#7c3aed;--db:#f5f3ff" onclick="filterDept('Collection',this)">💰 Collection</button>
+  <button class="dept-pill" data-dept="Phone Verification" style="--dc:#0891b2;--db:#ecfeff" onclick="filterDept('Phone Verification',this)">📞 Phone Verification</button>
+  <button class="dept-pill" data-dept="Customer Support" style="--dc:#16a34a;--db:#f0fdf4" onclick="filterDept('Customer Support',this)">🎧 Customer Support</button>
+  <button class="dept-pill" data-dept="Call Quality" style="--dc:#ea580c;--db:#fff7ed" onclick="filterDept('Call Quality',this)">⭐ Calls Quality</button>
+  <button class="dept-pill" data-dept="Finance" style="--dc:#be185d;--db:#fdf2f8" onclick="filterDept('Finance',this)">📊 Finance</button>
+</div>
+
+<div class="container">
+  <div class="info-box">
+    ℹ️ <strong>How to use:</strong> Get your free API key at <a href="https://console.anthropic.com/settings/keys" target="_blank" style="color:#2563eb;font-weight:700">console.anthropic.com/settings/keys</a> → paste it above → drag &amp; drop CVs → AI screens each CV and matches it to all OnCredit departments automatically.
+  </div>
+
+  <div class="tabs">
+    <button class="tab on" onclick="swTab('upload',this)">⬆ Upload CVs</button>
+    <button class="tab" id="tab-res" onclick="swTab('results',this)">📊 Screening Results</button>
+    <button class="tab" onclick="swTab('settings',this)">⚙ Settings</button>
+  </div>
+
+  <!-- UPLOAD PANE -->
+  <div id="p-upload" class="pane on">
+    <div class="dz" id="dz" onclick="document.getElementById('fi').click()">
+      <div class="dz-ico">📂</div>
+      <h2>Click here or drag &amp; drop CV files</h2>
+      <p>PDF and Word (.docx) — upload as many as you want at once</p>
+    </div>
+    <input type="file" id="fi" multiple accept=".pdf,.doc,.docx" style="display:none" onchange="addFiles(this.files)">
+    <div class="fq" id="fq"></div>
+    <div class="prog-wrap" id="progWrap">
+      <div class="prog-txt" id="progTxt">Processing...</div>
+      <div class="prog-bar"><div class="prog-fill" id="progFill" style="width:0%"></div></div>
+    </div>
+    <div class="btn-row" id="btnRow" style="display:none">
+      <button class="btn btn-p" id="analyseBtn" onclick="analyse()">🤖 Analyse CVs with AI</button>
+      <button class="btn" onclick="clearQ()">Clear all</button>
+    </div>
+    <div id="errBox"></div>
+  </div>
+
+  <!-- RESULTS PANE -->
+  <div id="p-results" class="pane">
+    <div class="stats">
+      <div class="stat"><div class="n" id="sT">0</div><div class="l">Total CVs</div></div>
+      <div class="stat"><div class="n" id="sS" style="color:#16a34a">0</div><div class="l">✅ Suitable</div></div>
+      <div class="stat"><div class="n" id="sR" style="color:#d97706">0</div><div class="l">⚠ Review</div></div>
+      <div class="stat"><div class="n" id="sU" style="color:#dc2626">0</div><div class="l">❌ Not Suitable</div></div>
+      <div class="stat"><div class="n" id="sD" style="color:#7c3aed">0</div><div class="l">🏢 Multi-Dept</div></div>
+    </div>
+    <div class="fil">
+      <select id="fSt" onchange="render()">
+        <option value="all">All candidates</option>
+        <option value="suitable">✅ Suitable only</option>
+        <option value="review">⚠ Needs review</option>
+        <option value="unsuitable">❌ Not suitable</option>
+      </select>
+      <select id="fSo" onchange="render()">
+        <option value="score">Sort by match score</option>
+        <option value="name">Sort by name</option>
+        <option value="status">Sort by status</option>
+        <option value="depts">Sort by departments matched</option>
+      </select>
+      <button class="btn btn-p" style="margin-left:auto" onclick="openBulk()">📨 Bulk message</button>
+    </div>
+    <div class="sel-row">
+      <input type="checkbox" id="sa" onchange="selAll(this)">
+      <label for="sa">Select all visible</label>
+      <span id="sc" style="margin-left:8px;font-weight:700;color:#2563eb"></span>
+    </div>
+    <div class="cards" id="cards"><div class="empty-state">No CVs screened yet. Go to the Upload tab to get started.</div></div>
+  </div>
+
+  <!-- SETTINGS PANE -->
+  <div id="p-settings" class="pane">
+    <div style="max-width:640px">
+      <div class="scard">
+        <h3>Department Screening Rules</h3>
+        <p style="font-size:13px;color:#9ca3af;margin-bottom:12px">The AI uses these rules to determine which OnCredit departments each candidate is suitable for.</p>
+        <label><input type="checkbox" checked><span><strong>Collection:</strong> Call centre / debt recovery exp, school leavers, HND/Diploma, 0-3 yrs. BSc+4yrs = not suitable (low salary).</span></label>
+        <label><input type="checkbox" checked><span><strong>Phone Verification:</strong> Good communication, basic computer skills, school leaver or above, detail-oriented.</span></label>
+        <label><input type="checkbox" checked><span><strong>Customer Support:</strong> Customer service experience, empathy, communication skills, problem-solving.</span></label>
+        <label><input type="checkbox" checked><span><strong>Call Quality:</strong> Experience in QA, monitoring, analytics, or senior call centre background.</span></label>
+        <label><input type="checkbox" checked><span><strong>Finance:</strong> Accounting, finance degree or part qualification (AAT/CIMA/ACCA), finance experience.</span></label>
+      </div>
+      <div class="scard">
+        <h3>Message Templates</h3>
+        <p style="font-size:13px;color:#9ca3af;margin-bottom:12px">Use <code style="background:#f3f4f6;padding:1px 5px;border-radius:4px">{name}</code> and <code style="background:#f3f4f6;padding:1px 5px;border-radius:4px">{dept}</code> as placeholders.</p>
+        <p style="font-size:13px;font-weight:700;color:#374151;margin-bottom:6px">Email template</p>
+        <textarea id="eTpl" rows="7">Dear {name},
+
+Thank you for your interest in joining OnCredit. We have reviewed your CV and would like to invite you for an interview for a position in our {dept} Department.
+
+Please contact us at your earliest convenience to schedule a suitable time.
+
+Best regards,
+OnCredit Recruitment Team</textarea>
+        <p style="font-size:13px;font-weight:700;color:#374151;margin:14px 0 6px">WhatsApp template</p>
+        <textarea id="wTpl" rows="3">Hi {name}, this is OnCredit HR. We reviewed your CV and would like to invite you for an interview in our {dept} Department. Please reply to confirm your availability. Thank you!</textarea>
+        <button class="btn btn-p" style="margin-top:12px" onclick="alert('Templates saved! ✓')">Save Templates</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Contact Modal -->
+<div class="mbg" id="cModal">
+  <div class="modal">
+    <h2>Send Message</h2>
+    <label class="ml" style="margin-top:0">Candidate</label>
+    <input type="text" id="mName" readonly style="background:#f3f4f6">
+    <label class="ml">Department (for message)</label>
+    <input type="text" id="mDept" placeholder="e.g. Collection">
+    <label class="ml">Send via</label>
+    <select id="mType" onchange="togFields()">
+      <option value="email">📧 Email</option>
+      <option value="whatsapp">💬 WhatsApp</option>
+    </select>
+    <div id="ef">
+      <label class="ml">Email address</label>
+      <input type="email" id="mEmail" placeholder="candidate@email.com">
+      <label class="ml">Subject</label>
+      <input type="text" id="mSubj" value="Interview Invitation — OnCredit">
+      <label class="ml">Message</label>
+      <textarea id="mBody" rows="7"></textarea>
+    </div>
+    <div id="wf" style="display:none">
+      <label class="ml">WhatsApp number (with country code)</label>
+      <input type="text" id="mPhone" placeholder="+94771234567">
+      <label class="ml">Message</label>
+      <textarea id="mWa" rows="4"></textarea>
+    </div>
+    <div class="mf">
+      <button class="btn" onclick="closeMod('cModal')">Cancel</button>
+      <button class="btn btn-p" onclick="doSend()">Send →</button>
+    </div>
+  </div>
+</div>
+
+<!-- Bulk Modal -->
+<div class="mbg" id="bModal">
+  <div class="modal">
+    <h2>Bulk Message</h2>
+    <p style="font-size:13px;color:#6b7280;margin-bottom:14px">Sending to <strong id="bCnt">0</strong> selected candidates using your saved template.</p>
+    <label class="ml" style="margin-top:0">Send via</label>
+    <select id="bType">
+      <option value="email">📧 Email</option>
+      <option value="whatsapp">💬 WhatsApp</option>
+    </select>
+    <p style="font-size:12px;color:#9ca3af;margin-top:10px">Allow pop-ups if your browser asks.</p>
+    <div class="mf">
+      <button class="btn" onclick="closeMod('bModal')">Cancel</button>
+      <button class="btn btn-g" onclick="doBulk()">Send All →</button>
+    </div>
+  </div>
+</div>
+
+<!-- CV Viewer Modal -->
+<div class="mbg" id="cvModal">
+  <div class="cv-modal">
+    <div class="cv-modal-header">
+      <h2 id="cvModalTitle">CV Preview</h2>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-p" id="cvDownloadBtn" style="font-size:12px;padding:5px 12px">⬇ Download CV</button>
+        <button class="btn" onclick="closeMod('cvModal')" style="font-size:12px;padding:5px 12px">✕ Close</button>
+      </div>
+    </div>
+    <div class="cv-iframe-wrap" id="cvContent"></div>
+  </div>
+</div>
+
+<script>
+const DEPTS=[
+  {id:'Collection',label:'Collection',emoji:'💰',dc:'#7c3aed',db:'#f5f3ff',bc:'#ede9fe'},
+  {id:'Phone Verification',label:'Phone Verification',emoji:'📞',dc:'#0891b2',db:'#ecfeff',bc:'#cffafe'},
+  {id:'Customer Support',label:'Customer Support',emoji:'🎧',dc:'#16a34a',db:'#f0fdf4',bc:'#dcfce7'},
+  {id:'Call Quality',label:'Calls Quality',emoji:'⭐',dc:'#ea580c',db:'#fff7ed',bc:'#fed7aa'},
+  {id:'Finance',label:'Finance',emoji:'📊',dc:'#be185d',db:'#fdf2f8',bc:'#fce7f3'}
+];
+const AC=[{bg:'#dbeafe',tx:'#1e40af'},{bg:'#dcfce7',tx:'#166534'},{bg:'#fef3c7',tx:'#92400e'},{bg:'#fce7f3',tx:'#9d174d'},{bg:'#ecfeff',tx:'#164e63'},{bg:'#f5f3ff',tx:'#5b21b6'},{bg:'#fff7ed',tx:'#9a3412'},{bg:'#f0fdf4',tx:'#14532d'}];
+
+let cands=[],queue=[],selIds=new Set(),busy=false,cvFiles={},activeDeptFilter='all';
+
+const PROMPT=`You are screening CVs for OnCredit, a financial services company in Sri Lanka. Assess suitability for FIVE departments.
+
+DEPARTMENTS AND CRITERIA:
+
+1. COLLECTION DEPARTMENT (LOW basic salary - entry level):
+- SUITABLE: School leavers (O/L, A/L), HND/Diploma, call centre/debt recovery exp (STRONG+), customer service/sales, 0-3 yrs exp
+- NOT SUITABLE: BSc/degree + 4+ yrs exp (overqualified, salary too low)
+
+2. PHONE VERIFICATION DEPARTMENT:
+- SUITABLE: Good communication skills, basic computer literacy, attention to detail, any level of education, 0-2 yrs exp fine
+- STRONG+: Data entry exp, verification/KYC exp, banking/finance background
+
+3. CUSTOMER SUPPORT DEPARTMENT:
+- SUITABLE: Customer service exp, empathy, communication skills, problem solving, English proficiency a plus
+- STRONG+: Previous support/helpdesk/CRM exp, multilingual
+
+4. CALLS QUALITY CHECK DEPARTMENT:
+- SUITABLE: QA experience, call monitoring, senior call centre background, analytical skills, report writing
+- STRONG+: QA certifications, experience evaluating agents, process improvement background
+
+5. FINANCE DEPARTMENT:
+- SUITABLE: Accounting/finance degree or part-qualification (AAT, CIMA, ACCA, HND in Accounting), finance/accounts exp
+- STRONG+: Full AAT/CIMA/ACCA, bank/microfinance exp, financial reporting skills
+
+For each dept, return a score 0-100 and a brief reason.
+
+Extract ALL personal details carefully. Return ONLY this JSON (no markdown, no backticks):
+{"name":"Full name","dob":"DOB e.g. 1998-05-12 or empty","age":"age as number string or empty","nic":"NIC e.g. 982341234V or empty","phone":"primary phone +94... or empty","phone2":"second phone or empty","email":"email or empty","address":"home address/area or empty","district":"district e.g. Colombo or empty","education":"highest qualification","experience":"X years, last role","currentEmployer":"company name or empty","languages":"e.g. Sinhala, English or empty","skills":["s1","s2","s3","s4","s5"],"callCenterExp":true,"availability":"e.g. Immediate or 1 month notice or empty","gender":"Male or Female or empty","maritalStatus":"Single or Married or empty","references":"number as string or empty","departments":{"Collection":{"score":75,"suitable":true,"reason":"brief reason"},"Phone Verification":{"score":60,"suitable":true,"reason":"brief reason"},"Customer Support":{"score":80,"suitable":true,"reason":"brief reason"},"Call Quality":{"score":30,"suitable":false,"reason":"brief reason"},"Finance":{"score":10,"suitable":false,"reason":"brief reason"}},"overallScore":72,"overallStatus":"suitable","overallReason":"2-3 sentences summary","redFlags":"concern or empty"}`;
+
+function checkKey(){
+  const k=document.getElementById('apiKey').value.trim();
+  const el=document.getElementById('keyStatus');
+  if(k.startsWith('sk-ant-')&&k.length>30){el.textContent='✓ Ready';el.className='key-ok';}
+  else if(k.length>5){el.textContent='Invalid';el.className='key-no';}
+  else{el.textContent='Not set';el.className='key-na';}
+}
+function getKey(){return document.getElementById('apiKey').value.trim();}
+function swTab(id,btn){
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('on'));
+  document.querySelectorAll('.pane').forEach(p=>p.classList.remove('on'));
+  btn.classList.add('on');document.getElementById('p-'+id).classList.add('on');
+}
+function filterDept(dept,btn){
+  activeDeptFilter=dept;
+  document.querySelectorAll('.dept-pill').forEach(p=>p.classList.remove('on'));
+  btn.classList.add('on');
+  render();
+}
+
+const dz=document.getElementById('dz');
+dz.addEventListener('dragover',e=>{e.preventDefault();dz.classList.add('over');});
+dz.addEventListener('dragleave',()=>dz.classList.remove('over'));
+dz.addEventListener('drop',e=>{e.preventDefault();dz.classList.remove('over');addFiles(e.dataTransfer.files);});
+
+function addFiles(files){
+  Array.from(files).forEach(f=>{
+    if(/\.(pdf|doc|docx)$/i.test(f.name)){
+      const id='f'+Date.now()+Math.random().toString(36).slice(2);
+      if(!queue.find(q=>q.file.name===f.name&&q.file.size===f.size)){
+        queue.push({file:f,id,st:'pending'});
+        cvFiles[id]=f; // store file for preview
+      }
+    }
+  });
+  renderQ();
+}
+
+function renderQ(){
+  document.getElementById('fq').innerHTML=queue.map(f=>`
+    <div class="fi">
+      <span style="font-size:16px">${f.file.name.toLowerCase().endsWith('.pdf')?'📄':'📝'}</span>
+      <span class="fi-name">${f.file.name}</span>
+      <span class="fi-size">${(f.file.size/1024).toFixed(0)} KB</span>
+      <span class="bdg ${f.st==='done'?'bdg-g':f.st==='processing'?'bdg-b':f.st==='error'?'bdg-r':'bdg-a'}">${f.st==='pending'?'Waiting':f.st==='processing'?'Analysing...':f.st==='done'?'Done':'Error'}</span>
+    </div>`).join('');
+  const p=queue.filter(f=>f.st==='pending').length;
+  const br=document.getElementById('btnRow');
+  if(p>0&&!busy){br.style.display='flex';document.getElementById('analyseBtn').textContent=`🤖 Analyse ${p} CV${p>1?'s':''} with AI`;}
+  else if(!busy){br.style.display='none';}
+}
+function showErr(msg){document.getElementById('errBox').innerHTML=msg?`<div class="err">⚠ ${msg}</div>`:'';}
+function clearQ(){queue=[];document.getElementById('fq').innerHTML='';document.getElementById('btnRow').style.display='none';showErr('');document.getElementById('progWrap').style.display='none';}
+
+async function analyse(){
+  if(!getKey()){showErr('Please enter your Anthropic API key at the top first.');return;}
+  if(!getKey().startsWith('sk-ant-')){showErr('API key should start with "sk-ant-" — please check.');return;}
+  busy=true;document.getElementById('btnRow').style.display='none';showErr('');
+  const pending=queue.filter(f=>f.st==='pending'),total=pending.length;
+  let done=0;
+  const pw=document.getElementById('progWrap'),pf=document.getElementById('progFill'),pt=document.getElementById('progTxt');
+  pw.style.display='block';
+
+  for(let fObj of pending){
+    fObj.st='processing';
+    pt.textContent=`Analysing ${fObj.file.name} (${done+1} of ${total})...`;
+    pf.style.width=Math.round((done/total)*100)+'%';
+    renderQ();
+    try{
+      const b64=await toB64(fObj.file);
+      const isPdf=fObj.file.name.toLowerCase().endsWith('.pdf');
+      const mt=isPdf?'application/pdf':'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+      const res=await fetch('https://api.anthropic.com/v1/messages',{
+        method:'POST',
+        headers:{'Content-Type':'application/json','x-api-key':getKey(),'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+        body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:1500,messages:[{role:'user',content:[
+          {type:'document',source:{type:'base64',media_type:mt,data:b64}},
+          {type:'text',text:PROMPT}
+        ]}]})
+      });
+      if(!res.ok){const e=await res.json().catch(()=>({}));throw new Error(e.error?.message||`API error ${res.status}`);}
+      const data=await res.json();
+      const txt=data.content.map(i=>i.text||'').join('');
+      const clean=txt.replace(/```json\s*/g,'').replace(/```\s*/g,'').trim();
+      const parsed=JSON.parse(clean);
+      parsed.id=fObj.id;parsed.filename=fObj.file.name;
+      cands.push(parsed);fObj.st='done';
+    }catch(e){fObj.st='error';showErr(`Error on "${fObj.file.name}": ${e.message}`);}
+    done++;renderQ();
+  }
+  busy=false;
+  pf.style.width='100%';
+  pt.textContent=`✅ Done! ${cands.length} CV${cands.length!==1?'s':''} screened.`;
+  updStats();render();
+  document.getElementById('tab-res').textContent=`📊 Results (${cands.length})`;
+  if(cands.length>0){
+    document.getElementById('btnRow').style.display='flex';
+    document.getElementById('btnRow').innerHTML=`<button class="btn btn-p" onclick="goResults()">View Results →</button><button class="btn" onclick="clearQ()">Clear queue</button>`;
+  }
+}
+
+function goResults(){
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('on'));
+  document.querySelectorAll('.pane').forEach(p=>p.classList.remove('on'));
+  document.getElementById('tab-res').classList.add('on');document.getElementById('p-results').classList.add('on');
+}
+function toB64(file){return new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(r.result.split(',')[1]);r.onerror=()=>rej(new Error('Read failed'));r.readAsDataURL(file);});}
+
+function updStats(){
+  const s=cands.filter(c=>c.overallStatus==='suitable').length;
+  const rv=cands.filter(c=>c.overallStatus==='review').length;
+  const u=cands.filter(c=>c.overallStatus==='unsuitable').length;
+  const multi=cands.filter(c=>c.departments&&Object.values(c.departments).filter(d=>d.suitable).length>1).length;
+  document.getElementById('sT').textContent=cands.length;
+  document.getElementById('sS').textContent=s;
+  document.getElementById('sR').textContent=rv;
+  document.getElementById('sU').textContent=u;
+  document.getElementById('sD').textContent=multi;
+}
+
+function avColor(name){let h=0;for(let c of(name||'?'))h+=c.charCodeAt(0);return AC[h%AC.length];}
+function initials(name){if(!name)return'??';const p=name.trim().split(' ');return(p.length>=2?p[0][0]+p[p.length-1][0]:name.slice(0,2)).toUpperCase();}
+function ig(label,val,href){
+  const empty=!val||String(val).trim()==='';
+  const display=empty?'Not found':href?`<a href="${href}" target="_blank">${val}</a>`:String(val);
+  return `<div class="ig"><div class="ig-label">${label}</div><div class="ig-val${empty?' empty':''}">${display}</div></div>`;
+}
+
+function render(){
+  const cards=document.getElementById('cards');
+  if(!cands.length){cards.innerHTML='<div class="empty-state">No CVs screened yet.</div>';return;}
+  const fst=document.getElementById('fSt').value,fso=document.getElementById('fSo').value;
+  let items=[...cands];
+
+  // dept filter
+  if(activeDeptFilter!=='all'){
+    items=items.filter(c=>{
+      if(!c.departments)return false;
+      return c.departments[activeDeptFilter]&&c.departments[activeDeptFilter].suitable;
+    });
+  }
+  // status filter
+  if(fst==='suitable')items=items.filter(c=>c.overallStatus==='suitable');
+  else if(fst==='review')items=items.filter(c=>c.overallStatus==='review');
+  else if(fst==='unsuitable')items=items.filter(c=>c.overallStatus==='unsuitable');
+
+  // sort
+  if(fso==='score')items.sort((a,b)=>(b.overallScore||0)-(a.overallScore||0));
+  else if(fso==='name')items.sort((a,b)=>(a.name||'').localeCompare(b.name||''));
+  else if(fso==='status'){const o={suitable:0,review:1,unsuitable:2};items.sort((a,b)=>o[a.overallStatus]-o[b.overallStatus]);}
+  else if(fso==='depts')items.sort((a,b)=>{
+    const da=a.departments?Object.values(a.departments).filter(d=>d.suitable).length:0;
+    const db=b.departments?Object.values(b.departments).filter(d=>d.suitable).length:0;
+    return db-da;
+  });
+
+  const cls={suitable:'s',review:'rv',unsuitable:'u'};
+  const col={suitable:'#16a34a',review:'#d97706',unsuitable:'#dc2626'};
+  const lbl={suitable:'✅ Suitable',review:'⚠ Review',unsuitable:'❌ Not Suitable'};
+  const bdg={suitable:'bdg-g',review:'bdg-a',unsuitable:'bdg-r'};
+
+  cards.innerHTML=items.map(c=>{
+    const av=avColor(c.name);
+    const chk=selIds.has(c.id)?'checked':'';
+    const skills=(c.skills||[]).slice(0,6).map(s=>`<span class="bdg bdg-b">${s}</span>`).join('');
+    const rf=c.redFlags?`<div style="margin-top:5px;font-size:12px;color:#991b1b;font-weight:700">⚠ ${c.redFlags}</div>`:'';
+    const ph=(c.phone||'').replace(/[\s\-()]/g,'');
+    const waNum=ph.replace('+','');
+    const loc=[c.address,c.district].filter(Boolean).join(c.address&&c.district?' · ':'');
+    let ageStr=c.age?c.age+' yrs':'';
+    if(!ageStr&&c.dob){try{const yr=new Date().getFullYear()-new Date(c.dob).getFullYear();if(yr>14&&yr<70)ageStr=yr+' yrs';}catch(e){}}
+    const dobStr=c.dob?`${c.dob}${ageStr?' ('+ageStr+')':''}`:ageStr||'';
+
+    // dept tags
+    const deptTags=DEPTS.map(d=>{
+      const di=c.departments&&c.departments[d.id];
+      if(!di)return '';
+      const suitable=di.suitable;
+      return `<span class="dept-tag" style="background:${suitable?d.db:'#f9fafb'};color:${suitable?d.dc:'#9ca3af'};border-color:${suitable?d.dc:'#e5e7eb'}" title="${di.reason||''}">${d.emoji} ${d.label}${suitable?' '+di.score+'%':' —'}</span>`;
+    }).join('');
+
+    // suitable depts list for primary dept in message
+    const suitableDepts=DEPTS.filter(d=>c.departments&&c.departments[d.id]&&c.departments[d.id].suitable).map(d=>d.id).join(', ');
+
+    return `<div class="card ${cls[c.overallStatus||'unsuitable']}">
+      <div class="card-top">
+        <input type="checkbox" ${chk} data-id="${c.id}" onchange="togSel('${c.id}',this)" style="margin-top:13px;width:15px;height:15px;flex-shrink:0;cursor:pointer">
+        <div class="av" style="background:${av.bg};color:${av.tx}">${initials(c.name)}</div>
+        <div class="ci">
+          <div class="cn">
+            ${c.name||'Unknown'}
+            <span class="bdg ${bdg[c.overallStatus||'unsuitable']}">${lbl[c.overallStatus||'unsuitable']}</span>
+            ${c.callCenterExp?'<span class="bdg bdg-b">📞 Call Centre</span>':''}
+            ${c.gender?`<span class="bdg bdg-gr">${c.gender}</span>`:''}
+          </div>
+          <div class="cm">${c.education||'—'} · ${c.experience||'—'}</div>
+          <div class="sb">
+            <span style="font-size:12px;color:#9ca3af;min-width:72px;font-weight:700">Match ${c.overallScore||0}%</span>
+            <div class="st"><div class="sf" style="width:${c.overallScore||0}%;background:${col[c.overallStatus||'unsuitable']}"></div></div>
+          </div>
+        </div>
+        <div class="cact">
+          <button class="view-cv-btn" onclick="viewCV('${c.id}','${(c.name||'CV').replace(/'/g,"\\'")}')">👁 View CV</button>
+          <button class="btn" style="font-size:12px;padding:5px 11px" onclick="openC('${c.id}','email','${suitableDepts.replace(/'/g,"\\'")}')">📧 Email</button>
+          <button class="btn btn-g" style="font-size:12px;padding:5px 11px" onclick="openC('${c.id}','whatsapp','${suitableDepts.replace(/'/g,"\\'")}')">💬 WhatsApp</button>
+        </div>
+      </div>
+
+      <div class="dept-tags">${deptTags||'<span style="font-size:12px;color:#9ca3af">No department match found</span>'}</div>
+
+      <div class="ig-section">
+        <div class="ig-title">Contact &amp; Personal Details</div>
+        <div class="info-grid">
+          ${ig('📞 Phone',c.phone,ph?`tel:${ph}`:'')}
+          ${ig('📱 Phone 2',c.phone2)}
+          ${ig('📧 Email',c.email,c.email?`mailto:${c.email}`:'')}
+          ${ig('💬 WhatsApp',waNum?'Open chat':'',waNum?`https://wa.me/${waNum}`:'')}
+          ${ig('🏠 Location',loc)}
+          ${ig('🪪 NIC Number',c.nic)}
+          ${ig('🎂 Age / DOB',dobStr)}
+          ${ig('👤 Gender',c.gender)}
+          ${ig('💍 Marital Status',c.maritalStatus)}
+          ${ig('🗣 Languages',c.languages)}
+          ${ig('🏢 Current Employer',c.currentEmployer)}
+          ${ig('⏰ Availability',c.availability)}
+        </div>
+      </div>
+
+      <div class="assessment">
+        <div class="assess-label">AI Assessment</div>
+        <div class="assess-reason">${c.overallReason||''}${rf}</div>
+        <div class="skills-row">${skills}</div>
+      </div>
+    </div>`;
+  }).join('');
+
+  if(!items.length)cards.innerHTML=`<div class="empty-state">No candidates match the current filter.</div>`;
+  updSelCount();
+}
+
+// CV VIEWER
+function viewCV(id,name){
+  const file=cvFiles[id];
+  if(!file){alert('CV file not available. Please re-upload this CV in the current session.');return;}
+  document.getElementById('cvModalTitle').textContent='CV — '+name;
+  const url=URL.createObjectURL(file);
+  const isPdf=file.name.toLowerCase().endsWith('.pdf');
+  const content=document.getElementById('cvContent');
+  document.getElementById('cvDownloadBtn').onclick=()=>{const a=document.createElement('a');a.href=url;a.download=file.name;a.click();};
+  if(isPdf){
+    content.innerHTML=`<iframe src="${url}#toolbar=1&navpanes=0" style="width:100%;height:100%;border:none"></iframe>`;
+  }else{
+    // For DOCX — download prompt + message
+    content.innerHTML=`<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;gap:16px;background:#fff;padding:40px;text-align:center">
+      <div style="font-size:48px">📝</div>
+      <div style="font-size:16px;font-weight:700;color:#374151">${file.name}</div>
+      <div style="font-size:13px;color:#9ca3af;max-width:360px">Word documents cannot be previewed directly in the browser. Click the Download button above to open it in Microsoft Word or Google Docs.</div>
+      <button class="btn btn-p" onclick="document.getElementById('cvDownloadBtn').click()">⬇ Download & Open</button>
+    </div>`;
+  }
+  document.getElementById('cvModal').classList.add('on');
+}
+
+function togSel(id,el){if(el.checked)selIds.add(id);else selIds.delete(id);updSelCount();}
+function selAll(el){selIds.clear();document.querySelectorAll('.cards input[type=checkbox]').forEach(cb=>{cb.checked=el.checked;if(el.checked)selIds.add(cb.dataset.id);});updSelCount();}
+function updSelCount(){const el=document.getElementById('sc');el.textContent=selIds.size>0?selIds.size+' selected':'';}
+
+function openC(id,type,depts){
+  const c=cands.find(x=>x.id===id);if(!c)return;
+  document.getElementById('mName').value=c.name||'';
+  document.getElementById('mType').value=type;
+  document.getElementById('mEmail').value=c.email||'';
+  document.getElementById('mPhone').value=c.phone||'';
+  document.getElementById('mDept').value=depts||(DEPTS.find(d=>c.departments&&c.departments[d.id]&&c.departments[d.id].suitable)||{id:''}).id;
+  const fn=(c.name||'Candidate').split(' ')[0];
+  const dept=document.getElementById('mDept').value||'the relevant';
+  document.getElementById('mBody').value=document.getElementById('eTpl').value.replace(/{name}/g,fn).replace(/{dept}/g,dept);
+  document.getElementById('mWa').value=document.getElementById('wTpl').value.replace(/{name}/g,fn).replace(/{dept}/g,dept);
+  togFields();document.getElementById('cModal').classList.add('on');
+}
+function togFields(){const t=document.getElementById('mType').value;document.getElementById('ef').style.display=t==='email'?'block':'none';document.getElementById('wf').style.display=t==='whatsapp'?'block':'none';}
+function closeMod(id){document.getElementById(id).classList.remove('on');}
+function doSend(){
+  const t=document.getElementById('mType').value;
+  const dept=document.getElementById('mDept').value||'the relevant';
+  if(t==='email'){
+    const em=document.getElementById('mEmail').value.trim();
+    const sub=document.getElementById('mSubj').value;
+    const body=document.getElementById('mBody').value.replace(/{dept}/g,dept);
+    if(em)window.open('mailto:'+em+'?subject='+encodeURIComponent(sub)+'&body='+encodeURIComponent(body));
+    else alert('No email found. Please enter manually.');
+  }else{
+    const ph=document.getElementById('mPhone').value.replace(/[\s\-()]/g,'');
+    const msg=document.getElementById('mWa').value.replace(/{dept}/g,dept);
+    if(ph)window.open('https://wa.me/'+ph.replace('+','')+'?text='+encodeURIComponent(msg));
+    else alert('No phone found. Please enter manually.');
+  }
+  closeMod('cModal');
+}
+function openBulk(){
+  if(selIds.size===0){alert('Please select at least one candidate first.');return;}
+  document.getElementById('bCnt').textContent=selIds.size;
+  document.getElementById('bModal').classList.add('on');
+}
+function doBulk(){
+  const t=document.getElementById('bType').value;
+  const sel=cands.filter(c=>selIds.has(c.id));
+  sel.forEach((c,i)=>{
+    const fn=(c.name||'Candidate').split(' ')[0];
+    const dept=(DEPTS.find(d=>c.departments&&c.departments[d.id]&&c.departments[d.id].suitable)||{id:'the relevant'}).id;
+    setTimeout(()=>{
+      if(t==='email'&&c.email){
+        const tpl=document.getElementById('eTpl').value.replace(/{name}/g,fn).replace(/{dept}/g,dept);
+        window.open('mailto:'+c.email+'?subject='+encodeURIComponent('Interview Invitation — OnCredit')+'&body='+encodeURIComponent(tpl));
+      }else if(t==='whatsapp'&&c.phone){
+        const tpl=document.getElementById('wTpl').value.replace(/{name}/g,fn).replace(/{dept}/g,dept);
+        window.open('https://wa.me/'+c.phone.replace(/[\s+\-()]/g,'')+'?text='+encodeURIComponent(tpl));
+      }
+    },i*500);
+  });
+  closeMod('bModal');
+  setTimeout(()=>{
+    const missing=sel.filter(c=>(t==='email'&&!c.email)||(t==='whatsapp'&&!c.phone));
+    let msg=`Opened ${sel.length-missing.length} message(s).`;
+    if(missing.length)msg+=`\n\n${missing.length} skipped (no ${t==='email'?'email':'phone'}):\n${missing.map(c=>c.name).join(', ')}`;
+    alert(msg);
+  },sel.length*500+400);
+}
+</script>
+</body>
+</html>
