@@ -4,279 +4,474 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>OnCredit — CV Screener</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<!-- Firebase -->
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { getDatabase, ref, set, onValue, update, remove, push } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+
+// ============================================================
+// 🔥 FIREBASE CONFIG — Replace with your own config below
+// ============================================================
+const firebaseConfig = {
+  apiKey: "AIzaSyBK1NymYdGnXYPqfdQc9j_HAwxoj_fOP4Q",
+  authDomain: "oncredit-cv-screener.firebaseapp.com",
+  databaseURL: "https://oncredit-cv-screener-default-rtdb.firebaseio.com",
+  projectId: "oncredit-cv-screener",
+  storageBucket: "oncredit-cv-screener.firebasestorage.app",
+  messagingSenderId: "7774852915",
+  appId: "1:7774852915:web:b1c0b83a71f58af39e5046"
+};
+
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getDatabase(app);
+
+// Expose to window for non-module code
+window._fb = { auth, db, ref, set, onValue, update, remove, push, signInWithEmailAndPassword, signOut, onAuthStateChanged };
+window._fbReady = true;
+window.dispatchEvent(new Event('fbReady'));
+</script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
-body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f2f2ef;color:#1a1a1a;min-height:100vh}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f0f2f5;color:#1a1a1a;min-height:100vh}
 
-/* TOP BAR */
-.topbar{background:#0a1628;padding:0 24px;display:flex;align-items:center;gap:20px;flex-wrap:wrap;min-height:60px}
-.logo{display:flex;align-items:center;gap:10px}
-.logo-icon{width:34px;height:34px;background:#2563eb;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:900;color:#fff;letter-spacing:-1px}
-.logo-text{font-size:16px;font-weight:700;color:#fff}
-.logo-sub{font-size:11px;color:#94a3b8;margin-top:1px}
-.topbar-right{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-left:auto}
-.topbar-right label{font-size:12px;color:#94a3b8;font-weight:600;white-space:nowrap}
-.topbar-right input{padding:6px 12px;border:1px solid #334155;border-radius:7px;font-size:12px;font-family:monospace;width:240px;background:#1e293b;color:#e2e8f0}
-.topbar-right input:focus{outline:none;border-color:#2563eb}
-.key-ok{background:#166534;color:#bbf7d0;font-size:11px;padding:3px 9px;border-radius:20px;font-weight:700}
-.key-no{background:#7f1d1d;color:#fecaca;font-size:11px;padding:3px 9px;border-radius:20px;font-weight:700}
-.key-na{background:#1e293b;color:#64748b;font-size:11px;padding:3px 9px;border-radius:20px}
+/* ---- LOGIN SCREEN ---- */
+#loginScreen{position:fixed;inset:0;background:linear-gradient(135deg,#0a1628 0%,#1a3a6b 100%);display:flex;align-items:center;justify-content:center;z-index:9999}
+.login-box{background:#fff;border-radius:16px;padding:36px 32px;width:94%;max-width:400px;box-shadow:0 20px 60px rgba(0,0,0,.4)}
+.login-logo{display:flex;align-items:center;gap:10px;margin-bottom:28px;justify-content:center}
+.login-logo-icon{width:42px;height:42px;background:#2563eb;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:900;color:#fff}
+.login-logo-text{font-size:20px;font-weight:800;color:#0a1628}
+.login-logo-sub{font-size:11px;color:#9ca3af;margin-top:1px}
+.login-title{font-size:17px;font-weight:700;color:#111827;margin-bottom:6px;text-align:center}
+.login-sub{font-size:13px;color:#9ca3af;text-align:center;margin-bottom:22px}
+.lf-label{font-size:12px;font-weight:700;color:#374151;display:block;margin-bottom:4px}
+.lf-input{width:100%;padding:10px 14px;border:1.5px solid #e5e7eb;border-radius:8px;font-size:14px;background:#f9fafb;color:#111827;margin-bottom:14px;transition:border .15s}
+.lf-input:focus{outline:none;border-color:#2563eb;background:#fff}
+.lf-btn{width:100%;padding:11px;background:#2563eb;color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;transition:background .1s}
+.lf-btn:hover{background:#1d4ed8}
+.lf-btn:disabled{background:#93c5fd;cursor:not-allowed}
+.login-err{background:#fee2e2;border:1px solid #fca5a5;border-radius:7px;padding:8px 12px;font-size:12px;color:#991b1b;margin-bottom:12px;display:none}
+.user-list{margin-top:20px;padding-top:18px;border-top:1px solid #f3f4f6}
+.user-list-title{font-size:11px;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:.4px;margin-bottom:10px}
+.user-item{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:8px;border:1px solid #e5e7eb;margin-bottom:6px;cursor:pointer;transition:all .1s}
+.user-item:hover{background:#eff6ff;border-color:#2563eb}
+.u-av{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800}
+.u-name{font-size:13px;font-weight:600;color:#374151}
+.u-role{font-size:10px;color:#9ca3af;margin-top:1px}
 
-/* DEPT SELECTOR BAR */
-.deptbar{background:#fff;border-bottom:1px solid #e5e7eb;padding:12px 24px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
-.deptbar-label{font-size:12px;font-weight:700;color:#6b7280;margin-right:4px;white-space:nowrap}
-.dept-pill{padding:5px 12px;border-radius:20px;font-size:12px;font-weight:600;cursor:pointer;border:1.5px solid #e5e7eb;background:#f9fafb;color:#374151;transition:all .15s;white-space:nowrap}
-.dept-pill.on{border-color:var(--dc);background:var(--db);color:var(--dc)}
-.dept-pill:hover{border-color:var(--dc);background:var(--db)}
+/* ---- TOPBAR ---- */
+.topbar{background:#0a1628;padding:0 18px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;min-height:54px}
+.logo{display:flex;align-items:center;gap:8px}
+.logo-icon{width:30px;height:30px;background:#2563eb;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:900;color:#fff}
+.logo-text{font-size:14px;font-weight:700;color:#fff}
+.logo-sub{font-size:10px;color:#475569;margin-top:1px}
+.topbar-right{display:flex;align-items:center;gap:8px;margin-left:auto;flex-wrap:wrap}
+.user-chip{display:flex;align-items:center;gap:6px;background:#1e293b;border-radius:20px;padding:4px 10px 4px 4px}
+.user-chip-av{width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:800}
+.user-chip-name{font-size:11px;font-weight:600;color:#e2e8f0}
+.user-chip-role{font-size:9px;color:#64748b}
+.api-wrap{display:flex;align-items:center;gap:6px}
+.api-wrap label{font-size:10px;color:#475569;font-weight:600;white-space:nowrap}
+.api-wrap input{padding:4px 8px;border:1px solid #1e3a5f;border-radius:5px;font-size:10px;font-family:monospace;width:190px;background:#0f2040;color:#94a3b8}
+.api-wrap input:focus{outline:none;border-color:#2563eb}
+.key-ok{background:#14532d;color:#86efac;font-size:9px;padding:2px 7px;border-radius:20px;font-weight:700;white-space:nowrap}
+.key-no{background:#7f1d1d;color:#fca5a5;font-size:9px;padding:2px 7px;border-radius:20px;font-weight:700}
+.key-na{background:#1e293b;color:#475569;font-size:9px;padding:2px 7px;border-radius:20px}
+.sync-dot{width:7px;height:7px;border-radius:50%;background:#22c55e;display:inline-block;animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+.sync-label{font-size:10px;color:#64748b}
+.logout-btn{padding:4px 10px;border-radius:5px;font-size:11px;cursor:pointer;border:1px solid #334155;background:transparent;color:#94a3b8;font-weight:600}
+.logout-btn:hover{background:#1e293b;color:#e2e8f0}
 
-/* LAYOUT */
-.container{max-width:1200px;margin:0 auto;padding:20px 18px}
-.tabs{display:flex;gap:0;border-bottom:1px solid #e5e7eb;margin-bottom:20px}
-.tab{padding:9px 18px;font-size:13px;cursor:pointer;border:none;background:none;color:#9ca3af;border-bottom:2px solid transparent;margin-bottom:-1px;font-weight:600;transition:color .15s}
-.tab.on{color:#2563eb;border-bottom:2px solid #2563eb}
+/* DEPT BAR */
+.deptbar{background:#fff;border-bottom:1px solid #e5e7eb;padding:8px 18px;display:flex;align-items:center;gap:5px;flex-wrap:wrap}
+.deptbar-label{font-size:10px;font-weight:700;color:#9ca3af;margin-right:4px;white-space:nowrap}
+.dp{padding:4px 10px;border-radius:20px;font-size:11px;font-weight:700;cursor:pointer;border:1.5px solid #e5e7eb;background:#f9fafb;color:#6b7280;transition:all .15s;white-space:nowrap}
+.dp.on{border-color:var(--dc);background:var(--db);color:var(--dc)}
+.dp:hover{border-color:var(--dc);background:var(--db);color:var(--dc)}
+
+/* NAV */
+.navtabs{background:#fff;border-bottom:1px solid #e5e7eb;padding:0 18px;display:flex;gap:0}
+.ntab{padding:9px 14px;font-size:12px;cursor:pointer;border:none;background:none;color:#9ca3af;border-bottom:2px solid transparent;margin-bottom:-1px;font-weight:700;white-space:nowrap}
+.ntab.on{color:#2563eb;border-bottom:2px solid #2563eb}
 .pane{display:none}.pane.on{display:block}
+.container{max-width:1280px;margin:0 auto;padding:16px 14px}
 
-/* UPLOAD */
-.dz{border:2px dashed #d1d5db;border-radius:12px;padding:36px 24px;text-align:center;cursor:pointer;transition:all .15s;background:#fff}
-.dz:hover,.dz.over{background:#eff6ff;border-color:#2563eb}
-.dz-ico{font-size:40px;margin-bottom:10px}
-.dz h2{font-size:16px;font-weight:700;color:#111827;margin-bottom:4px}
-.dz p{font-size:13px;color:#9ca3af}
-.fq{margin-top:10px;display:flex;flex-direction:column;gap:5px}
-.fi{display:flex;align-items:center;gap:10px;padding:8px 14px;background:#fff;border:1px solid #e5e7eb;border-radius:8px;font-size:13px}
-.fi-name{flex:1;font-weight:500;color:#374151;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.fi-size{color:#9ca3af;font-size:11px;flex-shrink:0}
-.btn{padding:8px 16px;border-radius:8px;font-size:13px;cursor:pointer;border:1px solid #d1d5db;background:#fff;color:#374151;font-weight:600;transition:all .1s}
+/* BUTTONS */
+.btn{padding:6px 12px;border-radius:7px;font-size:11px;cursor:pointer;border:1px solid #d1d5db;background:#fff;color:#374151;font-weight:700;transition:all .1s;display:inline-flex;align-items:center;gap:4px}
 .btn:hover{background:#f3f4f6}
+.btn:disabled{opacity:.5;cursor:not-allowed}
 .btn-p{background:#2563eb;color:#fff;border-color:#2563eb}.btn-p:hover{background:#1d4ed8}
-.btn-g{background:#166534;color:#fff;border-color:#166534}.btn-g:hover{background:#14532d}
-.btn-row{display:flex;gap:10px;margin-top:12px;flex-wrap:wrap}
-.bdg{display:inline-block;padding:2px 9px;border-radius:20px;font-size:11px;font-weight:700}
-.bdg-g{background:#dcfce7;color:#166534}
-.bdg-a{background:#fef3c7;color:#92400e}
-.bdg-r{background:#fee2e2;color:#991b1b}
-.bdg-b{background:#dbeafe;color:#1e40af}
-.bdg-gr{background:#f3f4f6;color:#6b7280}
+.btn-g{background:#16a34a;color:#fff;border-color:#16a34a}.btn-g:hover{background:#15803d}
+.btn-red{background:#dc2626;color:#fff;border-color:#dc2626}.btn-red:hover{background:#b91c1c}
+.btn-export{background:#7c3aed;color:#fff;border-color:#7c3aed}.btn-export:hover{background:#6d28d9}
+
+/* BADGES */
+.bdg{display:inline-block;padding:2px 7px;border-radius:20px;font-size:10px;font-weight:700;white-space:nowrap}
+.bdg-g{background:#dcfce7;color:#166534}.bdg-a{background:#fef3c7;color:#92400e}
+.bdg-r{background:#fee2e2;color:#991b1b}.bdg-b{background:#dbeafe;color:#1e40af}
+.bdg-gr{background:#f3f4f6;color:#6b7280}.bdg-purple{background:#f5f3ff;color:#6d28d9}
 
 /* STATS */
-.stats{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:18px}
-.stat{background:#fff;border:1px solid #e5e7eb;border-radius:10px;padding:12px 14px;text-align:center}
-.stat .n{font-size:24px;font-weight:800}
-.stat .l{font-size:11px;color:#9ca3af;margin-top:2px;font-weight:600}
+.stats{display:grid;grid-template-columns:repeat(6,1fr);gap:8px;margin-bottom:14px}
+.stat{background:#fff;border:1px solid #e5e7eb;border-radius:8px;padding:10px;text-align:center}
+.stat .n{font-size:20px;font-weight:800}
+.stat .l{font-size:9px;color:#9ca3af;margin-top:2px;font-weight:700;text-transform:uppercase;letter-spacing:.3px}
 
-/* FILTERS */
-.fil{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;align-items:center}
-.fil select{padding:7px 12px;border:1px solid #d1d5db;border-radius:8px;font-size:13px;background:#fff;color:#374151;font-weight:500}
+/* UPLOAD */
+.dz{border:2px dashed #d1d5db;border-radius:11px;padding:28px 20px;text-align:center;cursor:pointer;transition:all .15s;background:#fff}
+.dz:hover,.dz.over{background:#eff6ff;border-color:#2563eb}
+.fq{margin-top:8px;display:flex;flex-direction:column;gap:4px}
+.fi{display:flex;align-items:center;gap:8px;padding:6px 12px;background:#fff;border:1px solid #e5e7eb;border-radius:7px;font-size:11px}
+.fi-name{flex:1;font-weight:500;color:#374151;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.prog-wrap{margin-top:8px;display:none}
+.prog-bar{height:5px;background:#e5e7eb;border-radius:3px;overflow:hidden;margin-top:4px}
+.prog-fill{height:100%;background:#2563eb;border-radius:3px;transition:width .3s}
+.prog-txt{font-size:11px;color:#6b7280}
+
+/* TOOLBAR */
+.toolbar{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:10px;align-items:center}
+.toolbar select,.toolbar input[type=text]{padding:5px 9px;border:1px solid #d1d5db;border-radius:6px;font-size:11px;background:#fff;color:#374151;font-weight:500}
+.toolbar input[type=text]{width:180px}
 
 /* CARDS */
-.cards{display:flex;flex-direction:column;gap:12px}
-.card{background:#fff;border:1px solid #e5e7eb;border-radius:12px;overflow:hidden;transition:box-shadow .15s}
-.card:hover{box-shadow:0 2px 12px rgba(0,0,0,.08)}
-.card.s{border-left:4px solid #16a34a}
-.card.rv{border-left:4px solid #d97706}
-.card.u{border-left:4px solid #dc2626}
-.card-top{display:flex;align-items:flex-start;gap:12px;padding:14px 16px 10px}
-.av{width:44px;height:44px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:800;flex-shrink:0}
+.cards{display:flex;flex-direction:column;gap:9px}
+.card{background:#fff;border:1px solid #e5e7eb;border-radius:10px;overflow:hidden;transition:box-shadow .15s}
+.card:hover{box-shadow:0 2px 10px rgba(0,0,0,.07)}
+.card.s{border-left:4px solid #16a34a}.card.rv{border-left:4px solid #d97706}.card.u{border-left:4px solid #dc2626}
+.card-top{display:flex;align-items:flex-start;gap:10px;padding:11px 13px 9px}
+.av{width:38px;height:38px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;flex-shrink:0}
 .ci{flex:1;min-width:0}
-.cn{font-size:15px;font-weight:700;color:#111827;margin-bottom:4px;display:flex;flex-wrap:wrap;align-items:center;gap:5px}
-.cm{font-size:12px;color:#6b7280;margin-bottom:6px}
-.sb{display:flex;align-items:center;gap:10px}
-.st{flex:1;height:5px;background:#f3f4f6;border-radius:3px;overflow:hidden}
-.sf{height:100%;border-radius:3px;transition:width .5s}
-.cact{display:flex;gap:6px;flex-shrink:0;align-items:flex-start;flex-wrap:wrap}
-
-/* DEPT TAGS on card */
-.dept-tags{display:flex;flex-wrap:wrap;gap:5px;padding:8px 16px;border-top:1px solid #f3f4f6;background:#fafafa}
-.dept-tag{display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:20px;font-size:11px;font-weight:700;border:1px solid}
-
-/* INFO GRID */
+.cn{font-size:13px;font-weight:700;color:#111827;margin-bottom:3px;display:flex;flex-wrap:wrap;align-items:center;gap:4px}
+.cm{font-size:11px;color:#6b7280;margin-bottom:5px}
+.sb{display:flex;align-items:center;gap:8px}
+.st{flex:1;height:4px;background:#f3f4f6;border-radius:2px;overflow:hidden}
+.sf{height:100%;border-radius:2px;transition:width .5s}
+.cact{display:flex;gap:4px;flex-shrink:0;flex-wrap:wrap;align-items:flex-start}
+.card-controls{padding:7px 13px;background:#fafafa;border-top:1px solid #f3f4f6;display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+.ctrl-label{font-size:9px;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:.3px;white-space:nowrap}
+.ctrl-select{padding:3px 7px;border:1px solid #d1d5db;border-radius:5px;font-size:11px;background:#fff;color:#374151;font-weight:600;cursor:pointer}
+.contact-toggle{display:flex;align-items:center;gap:4px;font-size:11px;font-weight:600;cursor:pointer;padding:3px 9px;border-radius:5px;border:1px solid #d1d5db;background:#fff;color:#374151}
+.contact-toggle.contacted{background:#dcfce7;border-color:#16a34a;color:#166534}
+.remarks-input{flex:1;min-width:110px;padding:3px 7px;border:1px solid #d1d5db;border-radius:5px;font-size:11px;background:#fff;color:#374151}
+.remarks-input:focus{outline:none;border-color:#2563eb}
+.dept-tags-row{padding:5px 13px;border-top:1px solid #f3f4f6;display:flex;flex-wrap:wrap;gap:4px}
+.dept-tag{display:inline-flex;align-items:center;gap:3px;padding:2px 7px;border-radius:20px;font-size:10px;font-weight:700;border:1px solid}
 .ig-section{border-top:1px solid #f3f4f6}
-.ig-title{padding:8px 16px 2px;font-size:10px;font-weight:800;color:#9ca3af;text-transform:uppercase;letter-spacing:.6px}
-.info-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(175px,1fr));padding:4px 8px 10px}
-.ig{padding:5px 8px}
-.ig-label{font-size:10px;font-weight:700;color:#d1d5db;text-transform:uppercase;letter-spacing:.4px;margin-bottom:2px}
-.ig-val{font-size:13px;color:#111827;font-weight:500;word-break:break-word;line-height:1.4}
-.ig-val a{color:#2563eb;text-decoration:none}
-.ig-val a:hover{text-decoration:underline}
-.ig-val.empty{color:#d1d5db;font-style:italic;font-weight:400;font-size:12px}
+.ig-title{padding:5px 13px 0;font-size:9px;font-weight:800;color:#9ca3af;text-transform:uppercase;letter-spacing:.5px}
+.info-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(155px,1fr));padding:3px 7px 7px}
+.ig{padding:4px 6px}
+.ig-label{font-size:9px;font-weight:700;color:#d1d5db;text-transform:uppercase;letter-spacing:.3px;margin-bottom:1px}
+.ig-val{font-size:12px;color:#111827;font-weight:500;word-break:break-word;line-height:1.4}
+.ig-val a{color:#2563eb;text-decoration:none}.ig-val a:hover{text-decoration:underline}
+.ig-val.empty{color:#e5e7eb;font-style:italic;font-weight:400;font-size:11px}
+.assessment{padding:7px 13px 11px;background:#fafafa;border-top:1px solid #f3f4f6}
+.albl{font-size:9px;font-weight:800;color:#9ca3af;text-transform:uppercase;letter-spacing:.4px;margin-bottom:3px}
+.areason{font-size:12px;color:#374151;line-height:1.6;margin-bottom:5px}
+.skills-row{display:flex;flex-wrap:wrap;gap:4px}
 
-/* ASSESSMENT */
-.assessment{padding:10px 16px 14px;background:#fafafa;border-top:1px solid #f3f4f6}
-.assess-label{font-size:10px;font-weight:800;color:#9ca3af;text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px}
-.assess-reason{font-size:13px;color:#374151;line-height:1.65;margin-bottom:8px}
-.skills-row{display:flex;flex-wrap:wrap;gap:5px}
+/* HISTORY TABLE */
+.htable{width:100%;border-collapse:collapse;font-size:11px;background:#fff;border-radius:9px;overflow:hidden;border:1px solid #e5e7eb}
+.htable th{background:#f8fafc;padding:8px 10px;text-align:left;font-size:9px;font-weight:800;color:#6b7280;text-transform:uppercase;letter-spacing:.4px;border-bottom:1px solid #e5e7eb;white-space:nowrap}
+.htable td{padding:7px 10px;border-bottom:1px solid #f3f4f6;vertical-align:middle;color:#374151}
+.htable tr:last-child td{border-bottom:none}
+.htable tr:hover td{background:#f8fafc}
 
-/* VIEW CV BUTTON */
-.view-cv-btn{display:inline-flex;align-items:center;gap:5px;padding:5px 12px;border-radius:7px;font-size:12px;font-weight:600;cursor:pointer;border:1.5px solid #2563eb;background:#eff6ff;color:#2563eb;transition:all .1s}
-.view-cv-btn:hover{background:#dbeafe}
-
-.sel-row{display:flex;align-items:center;gap:8px;margin-bottom:10px;font-size:13px;color:#6b7280}
-.empty-state{text-align:center;padding:40px;color:#9ca3af;font-size:14px}
-.err{background:#fee2e2;border:1px solid #fca5a5;border-radius:8px;padding:10px 14px;font-size:13px;color:#991b1b;margin-top:10px}
-.info-box{background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:10px 14px;font-size:13px;color:#1e40af;margin-bottom:16px;line-height:1.6}
-.prog-wrap{margin-top:12px;display:none}
-.prog-bar{height:7px;background:#e5e7eb;border-radius:4px;overflow:hidden;margin-top:6px}
-.prog-fill{height:100%;background:#2563eb;border-radius:4px;transition:width .3s}
-.prog-txt{font-size:13px;color:#6b7280}
-
-/* MODAL */
-.mbg{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.55);display:none;align-items:center;justify-content:center;z-index:999}
+/* MODALS */
+.mbg{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.5);display:none;align-items:center;justify-content:center;z-index:999}
 .mbg.on{display:flex}
-.modal{background:#fff;border-radius:14px;border:1px solid #e5e7eb;padding:22px;width:94%;max-width:480px;max-height:90vh;overflow-y:auto;box-shadow:0 8px 40px rgba(0,0,0,.2)}
-.modal h2{font-size:17px;font-weight:700;margin-bottom:14px}
-.ml{font-size:13px;color:#6b7280;display:block;margin:10px 0 4px;font-weight:600}
-.modal input,.modal textarea,.modal select{width:100%;padding:8px 12px;border:1px solid #d1d5db;border-radius:8px;font-size:13px;background:#f9fafb;color:#1a1a1a}
-.modal input:focus,.modal textarea:focus,.modal select:focus{outline:none;border-color:#2563eb}
-.modal textarea{min-height:90px;resize:vertical}
-.mf{display:flex;gap:10px;justify-content:flex-end;margin-top:14px}
-
-/* CV VIEWER MODAL */
-.cv-modal{background:#fff;border-radius:14px;border:1px solid #e5e7eb;width:96%;max-width:860px;height:88vh;display:flex;flex-direction:column;box-shadow:0 8px 40px rgba(0,0,0,.25);overflow:hidden}
-.cv-modal-header{display:flex;align-items:center;justify-content:space-between;padding:14px 20px;border-bottom:1px solid #e5e7eb;flex-shrink:0}
-.cv-modal-header h2{font-size:16px;font-weight:700}
+.modal{background:#fff;border-radius:12px;padding:20px;width:94%;max-width:450px;max-height:90vh;overflow-y:auto;box-shadow:0 8px 40px rgba(0,0,0,.2)}
+.modal h2{font-size:15px;font-weight:700;margin-bottom:12px}
+.ml{font-size:11px;color:#6b7280;display:block;margin:8px 0 3px;font-weight:700}
+.modal input,.modal textarea,.modal select{width:100%;padding:7px 10px;border:1px solid #d1d5db;border-radius:7px;font-size:12px;background:#f9fafb;color:#1a1a1a}
+.modal textarea{min-height:80px;resize:vertical}
+.mf{display:flex;gap:8px;justify-content:flex-end;margin-top:12px}
+.cv-modal{background:#fff;border-radius:12px;width:96%;max-width:900px;height:88vh;display:flex;flex-direction:column;box-shadow:0 8px 40px rgba(0,0,0,.25);overflow:hidden}
+.cv-mh{display:flex;align-items:center;justify-content:space-between;padding:11px 16px;border-bottom:1px solid #e5e7eb;flex-shrink:0}
+.cv-mh h2{font-size:14px;font-weight:700}
 .cv-iframe-wrap{flex:1;overflow:hidden;background:#525659}
 .cv-iframe-wrap iframe{width:100%;height:100%;border:none}
-.cv-iframe-wrap .cv-docx-preview{width:100%;height:100%;overflow-y:auto;background:#fff;padding:20px}
-
-/* SETTINGS */
-.scard{background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:18px;margin-bottom:14px}
-.scard h3{font-size:15px;font-weight:700;margin-bottom:12px}
-.scard label{font-size:13px;color:#6b7280;display:flex;gap:10px;align-items:flex-start;margin-bottom:9px;line-height:1.5;cursor:pointer}
-.scard label input[type=checkbox]{margin-top:2px;flex-shrink:0;width:15px;height:15px}
-.scard textarea{width:100%;padding:9px 12px;border:1px solid #d1d5db;border-radius:8px;font-size:13px;background:#f9fafb;color:#1a1a1a;resize:vertical}
-
+.scard{background:#fff;border:1px solid #e5e7eb;border-radius:10px;padding:14px;margin-bottom:10px}
+.scard h3{font-size:13px;font-weight:700;margin-bottom:10px}
+.scard label{font-size:12px;color:#6b7280;display:flex;gap:8px;align-items:flex-start;margin-bottom:7px;line-height:1.5;cursor:pointer}
+.scard textarea{width:100%;padding:8px 10px;border:1px solid #d1d5db;border-radius:7px;font-size:12px;background:#f9fafb;color:#1a1a1a;resize:vertical;margin-bottom:5px}
+.infobox{background:#eff6ff;border:1px solid #bfdbfe;border-radius:7px;padding:9px 12px;font-size:12px;color:#1e40af;margin-bottom:12px;line-height:1.6}
+.errbox{background:#fee2e2;border:1px solid #fca5a5;border-radius:7px;padding:8px 12px;font-size:12px;color:#991b1b;margin-top:7px}
+.sel-row{display:flex;align-items:center;gap:8px;margin-bottom:8px;font-size:12px;color:#6b7280}
+.empty-state{text-align:center;padding:36px;color:#9ca3af;font-size:13px}
+.firebase-setup{background:#fff;border:1px solid #e5e7eb;border-radius:10px;padding:20px;max-width:680px;margin:0 auto}
+.firebase-setup h2{font-size:16px;font-weight:700;margin-bottom:12px;color:#111827}
+.step{display:flex;gap:12px;margin-bottom:14px;align-items:flex-start}
+.step-num{width:24px;height:24px;border-radius:50%;background:#2563eb;color:#fff;font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px}
+.step-body{font-size:12px;color:#374151;line-height:1.7}
+.step-body strong{color:#111827}
+.step-body code{background:#f3f4f6;padding:1px 5px;border-radius:4px;font-family:monospace;font-size:11px}
+.config-input-wrap{margin-top:10px}
+.config-input-wrap label{font-size:11px;font-weight:700;color:#374151;display:block;margin-bottom:3px}
+.config-input-wrap input{width:100%;padding:7px 10px;border:1px solid #d1d5db;border-radius:7px;font-size:12px;background:#f9fafb;color:#111827;margin-bottom:6px}
+.config-input-wrap input:focus{outline:none;border-color:#2563eb}
 @media(max-width:680px){
-  .topbar{flex-direction:column;align-items:flex-start;padding:12px 16px;gap:10px}
-  .topbar-right input{width:180px}
   .stats{grid-template-columns:repeat(3,1fr)}
-  .cact{flex-wrap:wrap}
+  .topbar{flex-direction:column;align-items:flex-start;padding:8px 12px;gap:6px}
   .info-grid{grid-template-columns:repeat(2,1fr)}
 }
 </style>
 </head>
 <body>
 
-<!-- TOP BAR -->
+<!-- ============ LOGIN SCREEN ============ -->
+<div id="loginScreen">
+  <div class="login-box">
+    <div class="login-logo">
+      <div class="login-logo-icon">OC</div>
+      <div>
+        <div class="login-logo-text">OnCredit</div>
+        <div style="font-size:11px;color:#9ca3af">CV Screener · Recruitment System</div>
+      </div>
+    </div>
+    <div class="login-title">Sign in to continue</div>
+    <div class="login-sub">Use your OnCredit HR credentials</div>
+    <div class="login-err" id="loginErr"></div>
+    <label class="lf-label">Username</label>
+    <input class="lf-input" type="text" id="loginUser" placeholder="Enter username" autocomplete="username">
+    <label class="lf-label">Password</label>
+    <input class="lf-input" type="password" id="loginPass" placeholder="Enter password" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()">
+    <button class="lf-btn" id="loginBtn" onclick="doLogin()">Sign In →</button>
+
+    <div class="user-list">
+      <div class="user-list-title">Quick select user</div>
+      <div id="userListEl"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ FIREBASE SETUP SCREEN ============ -->
+<div id="setupScreen" style="display:none;position:fixed;inset:0;background:#f0f2f5;overflow-y:auto;z-index:8888;padding:24px 16px">
+  <div class="firebase-setup">
+    <h2>🔥 Firebase Setup — One Time Only</h2>
+    <p style="font-size:12px;color:#6b7280;margin-bottom:18px">Firebase gives your team <strong>real-time sync</strong> — when anyone changes a status, adds a remark, or uploads a CV, everyone sees it instantly. Follow these steps:</p>
+    <div class="step">
+      <div class="step-num">1</div>
+      <div class="step-body"><strong>Create a free Firebase project</strong><br>Go to <a href="https://console.firebase.google.com" target="_blank" style="color:#2563eb">console.firebase.google.com</a> → Click <strong>Add project</strong> → Name it <code>oncredit-cv-screener</code> → Disable Google Analytics → Create project</div>
+    </div>
+    <div class="step">
+      <div class="step-num">2</div>
+      <div class="step-body"><strong>Enable Authentication</strong><br>In your project → <strong>Authentication</strong> → Get started → <strong>Email/Password</strong> → Enable → Save<br><br>Then go to <strong>Authentication → Users → Add user</strong> and add these accounts:<br>
+        <div style="margin-top:8px;display:flex;flex-direction:column;gap:4px" id="userListSetup"></div>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">3</div>
+      <div class="step-body"><strong>Enable Realtime Database</strong><br>In your project → <strong>Realtime Database</strong> → Create database → Choose your region → Start in <strong>test mode</strong> → Enable</div>
+    </div>
+    <div class="step">
+      <div class="step-num">4</div>
+      <div class="step-body"><strong>Get your Firebase config</strong><br>Go to <strong>Project Settings</strong> (gear icon) → <strong>Your apps</strong> → Click <strong>&lt;/&gt; Web</strong> → Register app as <code>oncredit-screener</code> → Copy the <code>firebaseConfig</code> object</div>
+    </div>
+    <div class="step">
+      <div class="step-num">5</div>
+      <div class="step-body"><strong>Paste your config values below</strong></div>
+    </div>
+    <div class="config-input-wrap">
+      <label>API Key</label><input id="cfg_apiKey" placeholder="AIzaSy...">
+      <label>Auth Domain</label><input id="cfg_authDomain" placeholder="your-project.firebaseapp.com">
+      <label>Database URL</label><input id="cfg_databaseURL" placeholder="https://your-project-default-rtdb.firebaseio.com">
+      <label>Project ID</label><input id="cfg_projectId" placeholder="your-project-id">
+      <label>Storage Bucket</label><input id="cfg_storageBucket" placeholder="your-project.appspot.com">
+      <label>Messaging Sender ID</label><input id="cfg_messagingSenderId" placeholder="123456789">
+      <label>App ID</label><input id="cfg_appId" placeholder="1:123456789:web:abc123">
+    </div>
+    <div style="margin-top:14px;display:flex;gap:8px;flex-wrap:wrap">
+      <button class="btn btn-p" onclick="saveConfig()" style="font-size:12px;padding:8px 16px">💾 Save Config & Continue</button>
+      <button class="btn" onclick="skipSetup()" style="font-size:12px;padding:8px 16px">Skip (use offline mode)</button>
+    </div>
+    <div id="setupErr" style="margin-top:10px;font-size:12px;color:#dc2626;display:none"></div>
+  </div>
+</div>
+
+<!-- ============ MAIN APP ============ -->
+<div id="mainApp" style="display:none">
+
 <div class="topbar">
   <div class="logo">
     <div class="logo-icon">OC</div>
     <div>
-      <div class="logo-text">OnCredit</div>
-      <div class="logo-sub">CV Screener</div>
+      <div class="logo-text">OnCredit CV Screener</div>
+      <div class="logo-sub">Recruitment Management System</div>
     </div>
   </div>
   <div class="topbar-right">
-    <label>Anthropic API Key:</label>
-    <input type="password" id="apiKey" placeholder="sk-ant-api03-..." oninput="checkKey()">
-    <span id="keyStatus" class="key-na">Not set</span>
+    <span class="sync-dot" id="syncDot" style="display:none"></span>
+    <span class="sync-label" id="syncLabel" style="display:none">Live sync</span>
+    <div class="api-wrap">
+      <label>API Key:</label>
+      <input type="password" id="apiKey" placeholder="sk-ant-api03-..." oninput="checkKey()">
+      <span id="keyStatus" class="key-na">Not set</span>
+    </div>
+    <div class="user-chip" id="userChip">
+      <div class="user-chip-av" id="chipAv" style="background:#dbeafe;color:#1e40af"></div>
+      <div>
+        <div class="user-chip-name" id="chipName">—</div>
+        <div class="user-chip-role" id="chipRole">—</div>
+      </div>
+    </div>
+    <button class="logout-btn" onclick="doLogout()">Sign Out</button>
   </div>
 </div>
 
-<!-- DEPARTMENT FILTER BAR -->
 <div class="deptbar">
-  <span class="deptbar-label">Show department:</span>
-  <button class="dept-pill on" data-dept="all" style="--dc:#2563eb;--db:#eff6ff" onclick="filterDept('all',this)">All Departments</button>
-  <button class="dept-pill" data-dept="Collection" style="--dc:#7c3aed;--db:#f5f3ff" onclick="filterDept('Collection',this)">💰 Collection</button>
-  <button class="dept-pill" data-dept="Phone Verification" style="--dc:#0891b2;--db:#ecfeff" onclick="filterDept('Phone Verification',this)">📞 Phone Verification</button>
-  <button class="dept-pill" data-dept="Customer Support" style="--dc:#16a34a;--db:#f0fdf4" onclick="filterDept('Customer Support',this)">🎧 Customer Support</button>
-  <button class="dept-pill" data-dept="Call Quality" style="--dc:#ea580c;--db:#fff7ed" onclick="filterDept('Call Quality',this)">⭐ Calls Quality</button>
-  <button class="dept-pill" data-dept="Finance" style="--dc:#be185d;--db:#fdf2f8" onclick="filterDept('Finance',this)">📊 Finance</button>
+  <span class="deptbar-label">Department:</span>
+  <button class="dp on" style="--dc:#2563eb;--db:#eff6ff" onclick="filterDept('all',this)">All</button>
+  <button class="dp" style="--dc:#7c3aed;--db:#f5f3ff" onclick="filterDept('Collection',this)">💰 Collection</button>
+  <button class="dp" style="--dc:#0891b2;--db:#ecfeff" onclick="filterDept('Phone Verification',this)">📞 Phone Verification</button>
+  <button class="dp" style="--dc:#16a34a;--db:#f0fdf4" onclick="filterDept('Customer Support',this)">🎧 Customer Support</button>
+  <button class="dp" style="--dc:#ea580c;--db:#fff7ed" onclick="filterDept('Call Quality',this)">⭐ Calls Quality</button>
+  <button class="dp" style="--dc:#be185d;--db:#fdf2f8" onclick="filterDept('Finance',this)">📊 Finance</button>
+</div>
+
+<div class="navtabs">
+  <button class="ntab on" onclick="swTab('upload',this)">⬆ Upload CVs</button>
+  <button class="ntab" id="tab-screen" onclick="swTab('screen',this)">🔍 Screening</button>
+  <button class="ntab" id="tab-history" onclick="swTab('history',this)">📋 History</button>
+  <button class="ntab" onclick="swTab('settings',this)">⚙ Settings</button>
 </div>
 
 <div class="container">
-  <div class="info-box">
-    ℹ️ <strong>How to use:</strong> Get your free API key at <a href="https://console.anthropic.com/settings/keys" target="_blank" style="color:#2563eb;font-weight:700">console.anthropic.com/settings/keys</a> → paste it above → drag &amp; drop CVs → AI screens each CV and matches it to all OnCredit departments automatically.
+
+<div id="p-upload" class="pane on">
+  <div class="infobox">ℹ️ <strong>API Key:</strong> Get from <a href="https://console.anthropic.com/settings/keys" target="_blank" style="color:#2563eb;font-weight:700">console.anthropic.com/settings/keys</a> → paste above → drag &amp; drop CVs → AI screens all departments → results saved &amp; synced to your whole team instantly.</div>
+  <div class="dz" id="dz" onclick="document.getElementById('fi').click()">
+    <div style="font-size:34px;margin-bottom:8px">📂</div>
+    <div style="font-size:14px;font-weight:700;color:#374151;margin-bottom:3px">Click or drag &amp; drop CV files here</div>
+    <div style="font-size:12px;color:#9ca3af">PDF and Word (.docx) — upload as many as you want at once</div>
   </div>
-
-  <div class="tabs">
-    <button class="tab on" onclick="swTab('upload',this)">⬆ Upload CVs</button>
-    <button class="tab" id="tab-res" onclick="swTab('results',this)">📊 Screening Results</button>
-    <button class="tab" onclick="swTab('settings',this)">⚙ Settings</button>
+  <input type="file" id="fi" multiple accept=".pdf,.doc,.docx" style="display:none" onchange="addFiles(this.files)">
+  <div class="fq" id="fq"></div>
+  <div class="prog-wrap" id="progWrap">
+    <div class="prog-txt" id="progTxt">Processing...</div>
+    <div class="prog-bar"><div class="prog-fill" id="progFill" style="width:0%"></div></div>
   </div>
-
-  <!-- UPLOAD PANE -->
-  <div id="p-upload" class="pane on">
-    <div class="dz" id="dz" onclick="document.getElementById('fi').click()">
-      <div class="dz-ico">📂</div>
-      <h2>Click here or drag &amp; drop CV files</h2>
-      <p>PDF and Word (.docx) — upload as many as you want at once</p>
-    </div>
-    <input type="file" id="fi" multiple accept=".pdf,.doc,.docx" style="display:none" onchange="addFiles(this.files)">
-    <div class="fq" id="fq"></div>
-    <div class="prog-wrap" id="progWrap">
-      <div class="prog-txt" id="progTxt">Processing...</div>
-      <div class="prog-bar"><div class="prog-fill" id="progFill" style="width:0%"></div></div>
-    </div>
-    <div class="btn-row" id="btnRow" style="display:none">
-      <button class="btn btn-p" id="analyseBtn" onclick="analyse()">🤖 Analyse CVs with AI</button>
-      <button class="btn" onclick="clearQ()">Clear all</button>
-    </div>
-    <div id="errBox"></div>
+  <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">
+    <button class="btn btn-p" id="analyseBtn" onclick="analyse()" style="display:none">🤖 Analyse with AI</button>
+    <button class="btn" id="clearBtn" onclick="clearQ()" style="display:none">Clear</button>
   </div>
+  <div id="errBox"></div>
+</div>
 
-  <!-- RESULTS PANE -->
-  <div id="p-results" class="pane">
-    <div class="stats">
-      <div class="stat"><div class="n" id="sT">0</div><div class="l">Total CVs</div></div>
-      <div class="stat"><div class="n" id="sS" style="color:#16a34a">0</div><div class="l">✅ Suitable</div></div>
-      <div class="stat"><div class="n" id="sR" style="color:#d97706">0</div><div class="l">⚠ Review</div></div>
-      <div class="stat"><div class="n" id="sU" style="color:#dc2626">0</div><div class="l">❌ Not Suitable</div></div>
-      <div class="stat"><div class="n" id="sD" style="color:#7c3aed">0</div><div class="l">🏢 Multi-Dept</div></div>
-    </div>
-    <div class="fil">
-      <select id="fSt" onchange="render()">
-        <option value="all">All candidates</option>
-        <option value="suitable">✅ Suitable only</option>
-        <option value="review">⚠ Needs review</option>
-        <option value="unsuitable">❌ Not suitable</option>
-      </select>
-      <select id="fSo" onchange="render()">
-        <option value="score">Sort by match score</option>
-        <option value="name">Sort by name</option>
-        <option value="status">Sort by status</option>
-        <option value="depts">Sort by departments matched</option>
-      </select>
-      <button class="btn btn-p" style="margin-left:auto" onclick="openBulk()">📨 Bulk message</button>
-    </div>
-    <div class="sel-row">
-      <input type="checkbox" id="sa" onchange="selAll(this)">
-      <label for="sa">Select all visible</label>
-      <span id="sc" style="margin-left:8px;font-weight:700;color:#2563eb"></span>
-    </div>
-    <div class="cards" id="cards"><div class="empty-state">No CVs screened yet. Go to the Upload tab to get started.</div></div>
+<div id="p-screen" class="pane">
+  <div class="stats">
+    <div class="stat"><div class="n" id="sT">0</div><div class="l">Total</div></div>
+    <div class="stat"><div class="n" id="sS" style="color:#16a34a">0</div><div class="l">✅ Suitable</div></div>
+    <div class="stat"><div class="n" id="sR" style="color:#d97706">0</div><div class="l">⚠ Review</div></div>
+    <div class="stat"><div class="n" id="sU" style="color:#dc2626">0</div><div class="l">❌ Rejected</div></div>
+    <div class="stat"><div class="n" id="sC" style="color:#2563eb">0</div><div class="l">📞 Contacted</div></div>
+    <div class="stat"><div class="n" id="sJ" style="color:#7c3aed">0</div><div class="l">✔ Joined</div></div>
   </div>
+  <div class="toolbar">
+    <input type="text" id="searchBox" placeholder="🔍 Search name / NIC / phone..." oninput="render()">
+    <select id="fSt" onchange="render()">
+      <option value="all">All status</option>
+      <option value="pending">⏳ Pending</option>
+      <option value="selected">✅ Selected</option>
+      <option value="rejected">❌ Rejected</option>
+      <option value="on hold">⏸ On Hold</option>
+      <option value="joined">✔ Joined</option>
+      <option value="not interested">🚫 Not Interested</option>
+      <option value="offered">💼 Offered</option>
+      <option value="did not attend">🚷 Did Not Attend</option>
+    </select>
+    <select id="fContact" onchange="render()">
+      <option value="all">All contact</option>
+      <option value="yes">📞 Contacted</option>
+      <option value="no">📵 Not contacted</option>
+    </select>
+    <select id="fSo" onchange="render()">
+      <option value="date">Newest first</option>
+      <option value="score">By AI score</option>
+      <option value="name">By name</option>
+    </select>
+    <button class="btn btn-export" onclick="exportExcel()">📥 Export Excel</button>
+    <button class="btn btn-p" onclick="openBulk()" style="margin-left:auto">📨 Bulk message</button>
+  </div>
+  <div class="sel-row">
+    <input type="checkbox" id="sa" onchange="selAll(this)">
+    <label for="sa">Select all visible</label>
+    <span id="sc" style="margin-left:8px;font-weight:700;color:#2563eb"></span>
+  </div>
+  <div class="cards" id="cards"><div class="empty-state">No CVs yet.</div></div>
+</div>
 
-  <!-- SETTINGS PANE -->
-  <div id="p-settings" class="pane">
-    <div style="max-width:640px">
-      <div class="scard">
-        <h3>Department Screening Rules</h3>
-        <p style="font-size:13px;color:#9ca3af;margin-bottom:12px">The AI uses these rules to determine which OnCredit departments each candidate is suitable for.</p>
-        <label><input type="checkbox" checked><span><strong>Collection:</strong> Call centre / debt recovery exp, school leavers, HND/Diploma, 0-3 yrs. BSc+4yrs = not suitable (low salary).</span></label>
-        <label><input type="checkbox" checked><span><strong>Phone Verification:</strong> Good communication, basic computer skills, school leaver or above, detail-oriented.</span></label>
-        <label><input type="checkbox" checked><span><strong>Customer Support:</strong> Customer service experience, empathy, communication skills, problem-solving.</span></label>
-        <label><input type="checkbox" checked><span><strong>Call Quality:</strong> Experience in QA, monitoring, analytics, or senior call centre background.</span></label>
-        <label><input type="checkbox" checked><span><strong>Finance:</strong> Accounting, finance degree or part qualification (AAT/CIMA/ACCA), finance experience.</span></label>
-      </div>
-      <div class="scard">
-        <h3>Message Templates</h3>
-        <p style="font-size:13px;color:#9ca3af;margin-bottom:12px">Use <code style="background:#f3f4f6;padding:1px 5px;border-radius:4px">{name}</code> and <code style="background:#f3f4f6;padding:1px 5px;border-radius:4px">{dept}</code> as placeholders.</p>
-        <p style="font-size:13px;font-weight:700;color:#374151;margin-bottom:6px">Email template</p>
-        <textarea id="eTpl" rows="7">Dear {name},
+<div id="p-history" class="pane">
+  <div class="toolbar" style="margin-bottom:12px">
+    <input type="text" id="histSearch" placeholder="🔍 Search..." oninput="renderHistory()">
+    <select id="histDept" onchange="renderHistory()">
+      <option value="all">All departments</option>
+      <option value="Collection">💰 Collection</option>
+      <option value="Phone Verification">📞 Phone Verification</option>
+      <option value="Customer Support">🎧 Customer Support</option>
+      <option value="Call Quality">⭐ Calls Quality</option>
+      <option value="Finance">📊 Finance</option>
+    </select>
+    <select id="histStatus" onchange="renderHistory()">
+      <option value="all">All status</option>
+      <option value="pending">Pending</option>
+      <option value="selected">Selected</option>
+      <option value="rejected">Rejected</option>
+      <option value="on hold">On Hold</option>
+      <option value="joined">Joined</option>
+      <option value="not interested">Not Interested</option>
+    </select>
+    <button class="btn btn-export" onclick="exportExcel()">📥 Export Excel</button>
+  </div>
+  <div style="overflow-x:auto">
+    <table class="htable">
+      <thead><tr>
+        <th>#</th><th>Name</th><th>Phone</th><th>NIC</th><th>Location</th>
+        <th>Education</th><th>Experience</th><th>Score</th>
+        <th>Departments</th><th>Status</th><th>Contacted</th>
+        <th>Remarks</th><th>By</th><th>Date</th><th>Actions</th>
+      </tr></thead>
+      <tbody id="histBody"><tr><td colspan="15" style="text-align:center;padding:24px;color:#9ca3af">No records</td></tr></tbody>
+    </table>
+  </div>
+</div>
 
-Thank you for your interest in joining OnCredit. We have reviewed your CV and would like to invite you for an interview for a position in our {dept} Department.
+<div id="p-settings" class="pane">
+  <div style="max-width:580px">
+    <div class="scard">
+      <h3>👥 Team Users</h3>
+      <div id="userListSettings" style="margin-bottom:10px"></div>
+      <p style="font-size:11px;color:#9ca3af">To add/remove users go to <a href="https://console.firebase.google.com" target="_blank" style="color:#2563eb">Firebase Console → Authentication → Users</a></p>
+    </div>
+    <div class="scard">
+      <h3>Message Templates</h3>
+      <p style="font-size:11px;color:#9ca3af;margin-bottom:8px">Use <code style="background:#f3f4f6;padding:1px 4px;border-radius:3px">{name}</code> and <code style="background:#f3f4f6;padding:1px 4px;border-radius:3px">{dept}</code> as placeholders.</p>
+      <p style="font-size:11px;font-weight:700;color:#374151;margin-bottom:4px">Email</p>
+      <textarea id="eTpl" rows="5">Dear {name},
 
-Please contact us at your earliest convenience to schedule a suitable time.
+Thank you for your interest in joining OnCredit. We have reviewed your CV and would like to invite you for an interview for our {dept} Department.
+
+Please contact us to schedule a convenient time.
 
 Best regards,
 OnCredit Recruitment Team</textarea>
-        <p style="font-size:13px;font-weight:700;color:#374151;margin:14px 0 6px">WhatsApp template</p>
-        <textarea id="wTpl" rows="3">Hi {name}, this is OnCredit HR. We reviewed your CV and would like to invite you for an interview in our {dept} Department. Please reply to confirm your availability. Thank you!</textarea>
-        <button class="btn btn-p" style="margin-top:12px" onclick="alert('Templates saved! ✓')">Save Templates</button>
-      </div>
+      <p style="font-size:11px;font-weight:700;color:#374151;margin:8px 0 4px">WhatsApp</p>
+      <textarea id="wTpl" rows="2">Hi {name}, this is OnCredit HR. We reviewed your CV and would like to invite you for an interview in our {dept} Department. Please reply to confirm your availability. Thank you!</textarea>
+      <button class="btn btn-p" style="margin-top:8px" onclick="saveTemplates()">Save Templates</button>
+    </div>
+    <div class="scard">
+      <h3>🔥 Firebase Config</h3>
+      <p style="font-size:11px;color:#9ca3af;margin-bottom:8px">Need to update your Firebase settings?</p>
+      <button class="btn btn-p" onclick="document.getElementById('setupScreen').style.display='block'">Update Firebase Config</button>
+      <button class="btn btn-red" style="margin-left:8px" onclick="if(confirm('Clear all stored data?')){localStorage.clear();location.reload()}">Reset All Data</button>
     </div>
   </div>
 </div>
+
+</div><!-- container -->
+</div><!-- mainApp -->
 
 <!-- Contact Modal -->
 <div class="mbg" id="cModal">
@@ -284,7 +479,7 @@ OnCredit Recruitment Team</textarea>
     <h2>Send Message</h2>
     <label class="ml" style="margin-top:0">Candidate</label>
     <input type="text" id="mName" readonly style="background:#f3f4f6">
-    <label class="ml">Department (for message)</label>
+    <label class="ml">Department</label>
     <input type="text" id="mDept" placeholder="e.g. Collection">
     <label class="ml">Send via</label>
     <select id="mType" onchange="togFields()">
@@ -297,13 +492,13 @@ OnCredit Recruitment Team</textarea>
       <label class="ml">Subject</label>
       <input type="text" id="mSubj" value="Interview Invitation — OnCredit">
       <label class="ml">Message</label>
-      <textarea id="mBody" rows="7"></textarea>
+      <textarea id="mBody" rows="5"></textarea>
     </div>
     <div id="wf" style="display:none">
-      <label class="ml">WhatsApp number (with country code)</label>
+      <label class="ml">WhatsApp number</label>
       <input type="text" id="mPhone" placeholder="+94771234567">
       <label class="ml">Message</label>
-      <textarea id="mWa" rows="4"></textarea>
+      <textarea id="mWa" rows="3"></textarea>
     </div>
     <div class="mf">
       <button class="btn" onclick="closeMod('cModal')">Cancel</button>
@@ -312,17 +507,12 @@ OnCredit Recruitment Team</textarea>
   </div>
 </div>
 
-<!-- Bulk Modal -->
 <div class="mbg" id="bModal">
   <div class="modal">
-    <h2>Bulk Message</h2>
-    <p style="font-size:13px;color:#6b7280;margin-bottom:14px">Sending to <strong id="bCnt">0</strong> selected candidates using your saved template.</p>
+    <h2>Bulk Message — <span id="bCnt">0</span> candidates</h2>
     <label class="ml" style="margin-top:0">Send via</label>
-    <select id="bType">
-      <option value="email">📧 Email</option>
-      <option value="whatsapp">💬 WhatsApp</option>
-    </select>
-    <p style="font-size:12px;color:#9ca3af;margin-top:10px">Allow pop-ups if your browser asks.</p>
+    <select id="bType"><option value="email">📧 Email</option><option value="whatsapp">💬 WhatsApp</option></select>
+    <p style="font-size:11px;color:#9ca3af;margin-top:6px">Allow pop-ups if prompted by browser.</p>
     <div class="mf">
       <button class="btn" onclick="closeMod('bModal')">Cancel</button>
       <button class="btn btn-g" onclick="doBulk()">Send All →</button>
@@ -330,14 +520,13 @@ OnCredit Recruitment Team</textarea>
   </div>
 </div>
 
-<!-- CV Viewer Modal -->
 <div class="mbg" id="cvModal">
   <div class="cv-modal">
-    <div class="cv-modal-header">
-      <h2 id="cvModalTitle">CV Preview</h2>
-      <div style="display:flex;gap:8px">
-        <button class="btn btn-p" id="cvDownloadBtn" style="font-size:12px;padding:5px 12px">⬇ Download CV</button>
-        <button class="btn" onclick="closeMod('cvModal')" style="font-size:12px;padding:5px 12px">✕ Close</button>
+    <div class="cv-mh">
+      <h2 id="cvTitle">CV Preview</h2>
+      <div style="display:flex;gap:5px">
+        <button class="btn btn-p" id="cvDlBtn" style="font-size:10px;padding:4px 9px">⬇ Download</button>
+        <button class="btn" onclick="closeMod('cvModal')" style="font-size:10px;padding:4px 9px">✕ Close</button>
       </div>
     </div>
     <div class="cv-iframe-wrap" id="cvContent"></div>
@@ -345,308 +534,448 @@ OnCredit Recruitment Team</textarea>
 </div>
 
 <script>
+// ============================================================
+// USERS CONFIG — add/remove users here
+// ============================================================
+const USERS = [
+  { username:'admin',       password:'admin123',      email:'admin@oncredit.lk',       name:'Admin',           role:'Admin',             color:'#dc2626', bg:'#fee2e2' },
+  { username:'hr',          password:'hr123',         email:'hr@oncredit.lk',           name:'HR Manager',      role:'HR',                color:'#2563eb', bg:'#dbeafe' },
+  { username:'collection',  password:'collect123',    email:'collection@oncredit.lk',   name:'Collection Team', role:'Collection',        color:'#7c3aed', bg:'#f5f3ff' },
+  { username:'finance',     password:'finance123',    email:'finance@oncredit.lk',       name:'Finance Team',    role:'Finance',           color:'#be185d', bg:'#fdf2f8' },
+  { username:'pv',          password:'pv123',         email:'Pv@oncredit.lk',           name:'Phone Verification',   role:'Phone Verification', color:'#0891b2', bg:'#ecfeff' },
+  { username:'csts',        password:'csts123',       email:'CSTS@oncredit.lk',         name:'Customer Support',     role:'Customer Support',   color:'#16a34a', bg:'#dcfce7' },
+  { username:'quality',     password:'quality123',    email:'quality@oncredit.lk',       name:'Quality Team',    role:'Calls Quality',     color:'#ea580c', bg:'#fff7ed' },
+];
+
 const DEPTS=[
-  {id:'Collection',label:'Collection',emoji:'💰',dc:'#7c3aed',db:'#f5f3ff',bc:'#ede9fe'},
-  {id:'Phone Verification',label:'Phone Verification',emoji:'📞',dc:'#0891b2',db:'#ecfeff',bc:'#cffafe'},
-  {id:'Customer Support',label:'Customer Support',emoji:'🎧',dc:'#16a34a',db:'#f0fdf4',bc:'#dcfce7'},
-  {id:'Call Quality',label:'Calls Quality',emoji:'⭐',dc:'#ea580c',db:'#fff7ed',bc:'#fed7aa'},
-  {id:'Finance',label:'Finance',emoji:'📊',dc:'#be185d',db:'#fdf2f8',bc:'#fce7f3'}
+  {id:'Collection',label:'Collection',emoji:'💰',dc:'#7c3aed',db:'#f5f3ff'},
+  {id:'Phone Verification',label:'Phone Verification',emoji:'📞',dc:'#0891b2',db:'#ecfeff'},
+  {id:'Customer Support',label:'Customer Support',emoji:'🎧',dc:'#16a34a',db:'#f0fdf4'},
+  {id:'Call Quality',label:'Calls Quality',emoji:'⭐',dc:'#ea580c',db:'#fff7ed'},
+  {id:'Finance',label:'Finance',emoji:'📊',dc:'#be185d',db:'#fdf2f8'}
 ];
 const AC=[{bg:'#dbeafe',tx:'#1e40af'},{bg:'#dcfce7',tx:'#166534'},{bg:'#fef3c7',tx:'#92400e'},{bg:'#fce7f3',tx:'#9d174d'},{bg:'#ecfeff',tx:'#164e63'},{bg:'#f5f3ff',tx:'#5b21b6'},{bg:'#fff7ed',tx:'#9a3412'},{bg:'#f0fdf4',tx:'#14532d'}];
+const STATUS_COLORS={'pending':'bdg-gr','selected':'bdg-g','rejected':'bdg-r','on hold':'bdg-a','joined':'bdg-purple','not interested':'bdg-r','offered':'bdg-b','did not attend':'bdg-r'};
 
-let cands=[],queue=[],selIds=new Set(),busy=false,cvFiles={},activeDeptFilter='all';
+let cands=[],queue=[],selIds=new Set(),busy=false,activeDeptFilter='all',cvBlobs={};
+let currentUser=null,useFirebase=false,fbListenerSet=false;
 
-const PROMPT=`You are screening CVs for OnCredit, a financial services company in Sri Lanka. Assess suitability for FIVE departments.
-
-DEPARTMENTS AND CRITERIA:
-
-1. COLLECTION DEPARTMENT (LOW basic salary - entry level):
-- SUITABLE: School leavers (O/L, A/L), HND/Diploma, call centre/debt recovery exp (STRONG+), customer service/sales, 0-3 yrs exp
-- NOT SUITABLE: BSc/degree + 4+ yrs exp (overqualified, salary too low)
-
-2. PHONE VERIFICATION DEPARTMENT:
-- SUITABLE: Good communication skills, basic computer literacy, attention to detail, any level of education, 0-2 yrs exp fine
-- STRONG+: Data entry exp, verification/KYC exp, banking/finance background
-
-3. CUSTOMER SUPPORT DEPARTMENT:
-- SUITABLE: Customer service exp, empathy, communication skills, problem solving, English proficiency a plus
-- STRONG+: Previous support/helpdesk/CRM exp, multilingual
-
-4. CALLS QUALITY CHECK DEPARTMENT:
-- SUITABLE: QA experience, call monitoring, senior call centre background, analytical skills, report writing
-- STRONG+: QA certifications, experience evaluating agents, process improvement background
-
-5. FINANCE DEPARTMENT:
-- SUITABLE: Accounting/finance degree or part-qualification (AAT, CIMA, ACCA, HND in Accounting), finance/accounts exp
-- STRONG+: Full AAT/CIMA/ACCA, bank/microfinance exp, financial reporting skills
-
-For each dept, return a score 0-100 and a brief reason.
-
-Extract ALL personal details carefully. Return ONLY this JSON (no markdown, no backticks):
-{"name":"Full name","dob":"DOB e.g. 1998-05-12 or empty","age":"age as number string or empty","nic":"NIC e.g. 982341234V or empty","phone":"primary phone +94... or empty","phone2":"second phone or empty","email":"email or empty","address":"home address/area or empty","district":"district e.g. Colombo or empty","education":"highest qualification","experience":"X years, last role","currentEmployer":"company name or empty","languages":"e.g. Sinhala, English or empty","skills":["s1","s2","s3","s4","s5"],"callCenterExp":true,"availability":"e.g. Immediate or 1 month notice or empty","gender":"Male or Female or empty","maritalStatus":"Single or Married or empty","references":"number as string or empty","departments":{"Collection":{"score":75,"suitable":true,"reason":"brief reason"},"Phone Verification":{"score":60,"suitable":true,"reason":"brief reason"},"Customer Support":{"score":80,"suitable":true,"reason":"brief reason"},"Call Quality":{"score":30,"suitable":false,"reason":"brief reason"},"Finance":{"score":10,"suitable":false,"reason":"brief reason"}},"overallScore":72,"overallStatus":"suitable","overallReason":"2-3 sentences summary","redFlags":"concern or empty"}`;
-
-function checkKey(){
-  const k=document.getElementById('apiKey').value.trim();
-  const el=document.getElementById('keyStatus');
-  if(k.startsWith('sk-ant-')&&k.length>30){el.textContent='✓ Ready';el.className='key-ok';}
-  else if(k.length>5){el.textContent='Invalid';el.className='key-no';}
-  else{el.textContent='Not set';el.className='key-na';}
+// ============================================================
+// FIREBASE CONFIG MANAGEMENT
+// ============================================================
+function getStoredConfig(){try{return JSON.parse(localStorage.getItem('oc_fb_config')||'null');}catch(e){return null;}}
+function saveConfig(){
+  const cfg={
+    apiKey:document.getElementById('cfg_apiKey').value.trim(),
+    authDomain:document.getElementById('cfg_authDomain').value.trim(),
+    databaseURL:document.getElementById('cfg_databaseURL').value.trim(),
+    projectId:document.getElementById('cfg_projectId').value.trim(),
+    storageBucket:document.getElementById('cfg_storageBucket').value.trim(),
+    messagingSenderId:document.getElementById('cfg_messagingSenderId').value.trim(),
+    appId:document.getElementById('cfg_appId').value.trim()
+  };
+  if(!cfg.apiKey||!cfg.databaseURL){document.getElementById('setupErr').textContent='Please fill in at least API Key and Database URL.';document.getElementById('setupErr').style.display='block';return;}
+  localStorage.setItem('oc_fb_config',JSON.stringify(cfg));
+  document.getElementById('setupScreen').style.display='none';
+  alert('✅ Firebase config saved! The page will reload to connect.');
+  location.reload();
 }
+function skipSetup(){
+  localStorage.setItem('oc_fb_config','skip');
+  document.getElementById('setupScreen').style.display='none';
+  showLoginScreen();
+}
+
+// ============================================================
+// INIT
+// ============================================================
+function initApp(){
+  // Build user list in login
+  const ul=document.getElementById('userListEl');
+  ul.innerHTML=USERS.map(u=>`
+    <div class="user-item" onclick="quickLogin('${u.username}','${u.password}')">
+      <div class="u-av" style="background:${u.bg};color:${u.color}">${u.name.charAt(0)}</div>
+      <div><div class="u-name">${u.name}</div><div class="u-role">${u.role} · ${u.username}</div></div>
+    </div>`).join('');
+  // Build setup user list
+  const us=document.getElementById('userListSetup');
+  if(us)us.innerHTML=USERS.map(u=>`<div style="background:#f8fafc;border:1px solid #e5e7eb;border-radius:6px;padding:6px 10px;font-size:11px;font-family:monospace;margin-bottom:4px"><strong>${u.email}</strong> / ${u.password}</div>`).join('');
+  // Build settings user list
+  const uss=document.getElementById('userListSettings');
+  if(uss)uss.innerHTML=USERS.map(u=>`<div style="display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid #f3f4f6">
+    <div style="width:28px;height:28px;border-radius:50%;background:${u.bg};color:${u.color};display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800">${u.name.charAt(0)}</div>
+    <div><div style="font-size:12px;font-weight:700">${u.name}</div><div style="font-size:10px;color:#9ca3af">${u.role} · ${u.username}</div></div>
+    <span class="bdg" style="background:${u.bg};color:${u.color};margin-left:auto">${u.role}</span>
+  </div>`).join('');
+
+  const cfg=getStoredConfig();
+  if(!cfg){
+    document.getElementById('setupScreen').style.display='block';
+    return;
+  }
+  if(cfg==='skip'){useFirebase=false;showLoginScreen();return;}
+  // Firebase is configured — wait for module to load
+  if(window._fbReady){initFirebase();}
+  else{window.addEventListener('fbReady',initFirebase,{once:true});}
+}
+
+function initFirebase(){
+  const cfg=getStoredConfig();
+  if(!cfg||cfg==='skip'){useFirebase=false;showLoginScreen();return;}
+  // pre-fill setup fields if they exist
+  ['apiKey','authDomain','databaseURL','projectId','storageBucket','messagingSenderId','appId'].forEach(k=>{
+    const el=document.getElementById('cfg_'+k);if(el&&cfg[k])el.value=cfg[k];
+  });
+  useFirebase=true;
+  const {auth,onAuthStateChanged}=window._fb;
+  onAuthStateChanged(auth,user=>{
+    if(user){
+      const u=USERS.find(x=>x.email===user.email)||{name:user.email,role:'User',color:'#2563eb',bg:'#dbeafe'};
+      currentUser={...u,uid:user.uid};
+      startApp();
+    }else{showLoginScreen();}
+  });
+}
+function showLoginScreen(){document.getElementById('loginScreen').style.display='flex';}
+
+// ============================================================
+// LOGIN
+// ============================================================
+function quickLogin(u,p){document.getElementById('loginUser').value=u;document.getElementById('loginPass').value=p;doLogin();}
+async function doLogin(){
+  const username=document.getElementById('loginUser').value.trim();
+  const password=document.getElementById('loginPass').value.trim();
+  const errEl=document.getElementById('loginErr');
+  const btn=document.getElementById('loginBtn');
+  errEl.style.display='none';
+  if(!username||!password){errEl.textContent='Please enter username and password.';errEl.style.display='block';return;}
+  const user=USERS.find(u=>u.username===username&&u.password===password);
+  if(!user){errEl.textContent='Invalid username or password. Please try again.';errEl.style.display='block';return;}
+  btn.disabled=true;btn.textContent='Signing in...';
+  if(useFirebase){
+    try{
+      const {auth,signInWithEmailAndPassword}=window._fb;
+      await signInWithEmailAndPassword(auth,user.email,user.password);
+      // onAuthStateChanged will handle the rest
+    }catch(e){
+      // If firebase auth fails, continue offline
+      currentUser=user;startApp();
+    }
+  }else{currentUser=user;startApp();}
+  btn.disabled=false;btn.textContent='Sign In →';
+}
+async function doLogout(){
+  if(useFirebase){try{const {auth,signOut}=window._fb;await signOut(auth);}catch(e){}}
+  currentUser=null;cands=[];
+  document.getElementById('mainApp').style.display='none';
+  document.getElementById('loginScreen').style.display='flex';
+  document.getElementById('loginUser').value='';
+  document.getElementById('loginPass').value='';
+}
+
+// ============================================================
+// START APP
+// ============================================================
+function startApp(){
+  document.getElementById('loginScreen').style.display='none';
+  document.getElementById('mainApp').style.display='block';
+  // Set user chip
+  const u=currentUser;
+  const av=document.getElementById('chipAv');
+  av.textContent=u.name.charAt(0);
+  av.style.background=u.bg;av.style.color=u.color;
+  document.getElementById('chipName').textContent=u.name;
+  document.getElementById('chipRole').textContent=u.role;
+  loadTemplates();
+  if(useFirebase){setupFirebaseListener();}
+  else{cands=loadLocalCands();updStats();render();}
+}
+
+// ============================================================
+// FIREBASE REALTIME LISTENER
+// ============================================================
+function setupFirebaseListener(){
+  if(fbListenerSet)return;fbListenerSet=true;
+  const {db,ref,onValue}=window._fb;
+  const cvsRef=ref(db,'cvs');
+  onValue(cvsRef,snapshot=>{
+    const data=snapshot.val()||{};
+    cands=Object.values(data).sort((a,b)=>new Date(b.uploadedAt||0)-new Date(a.uploadedAt||0));
+    updStats();render();renderHistory();
+    document.getElementById('syncDot').style.display='inline-block';
+    document.getElementById('syncLabel').style.display='inline';
+    document.getElementById('tab-screen').textContent=`🔍 Screening (${cands.length})`;
+    document.getElementById('tab-history').textContent=`📋 History (${cands.length})`;
+  });
+}
+async function fbSave(id,data){
+  if(!useFirebase){saveLocalCands();return;}
+  const {db,ref,update}=window._fb;
+  try{await update(ref(db,'cvs/'+id),data);}catch(e){console.error('Firebase save error:',e);}
+}
+async function fbDelete(id){
+  if(!useFirebase){cands=cands.filter(c=>c.id!==id);saveLocalCands();updStats();render();renderHistory();return;}
+  const {db,ref,remove}=window._fb;
+  try{await remove(ref(db,'cvs/'+id));}catch(e){console.error('Firebase delete error:',e);}
+}
+async function fbAdd(cand){
+  if(!useFirebase){cands.unshift(cand);saveLocalCands();updStats();render();renderHistory();return;}
+  const {db,ref,set}=window._fb;
+  try{await set(ref(db,'cvs/'+cand.id),cand);}catch(e){console.error('Firebase add error:',e);}
+}
+
+// LOCAL FALLBACK
+function loadLocalCands(){try{return JSON.parse(localStorage.getItem('oc_cvs_v2')||'[]');}catch(e){return[];}}
+function saveLocalCands(){localStorage.setItem('oc_cvs_v2',JSON.stringify(cands));}
+function loadTemplates(){
+  try{const t=JSON.parse(localStorage.getItem('oc_templates')||'{}');if(t.email)document.getElementById('eTpl').value=t.email;if(t.whatsapp)document.getElementById('wTpl').value=t.whatsapp;}catch(e){}
+}
+function saveTemplates(){localStorage.setItem('oc_templates',JSON.stringify({email:document.getElementById('eTpl').value,whatsapp:document.getElementById('wTpl').value}));alert('Templates saved! ✓');}
+
+// ============================================================
+// KEY & TAB
+// ============================================================
+function checkKey(){const k=document.getElementById('apiKey').value.trim();const el=document.getElementById('keyStatus');if(k.startsWith('sk-ant-')&&k.length>30){el.textContent='✓ Ready';el.className='key-ok';}else if(k.length>5){el.textContent='Invalid';el.className='key-no';}else{el.textContent='Not set';el.className='key-na';}}
 function getKey(){return document.getElementById('apiKey').value.trim();}
-function swTab(id,btn){
-  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('on'));
-  document.querySelectorAll('.pane').forEach(p=>p.classList.remove('on'));
-  btn.classList.add('on');document.getElementById('p-'+id).classList.add('on');
-}
-function filterDept(dept,btn){
-  activeDeptFilter=dept;
-  document.querySelectorAll('.dept-pill').forEach(p=>p.classList.remove('on'));
-  btn.classList.add('on');
-  render();
-}
+function swTab(id,btn){document.querySelectorAll('.ntab').forEach(t=>t.classList.remove('on'));document.querySelectorAll('.pane').forEach(p=>p.classList.remove('on'));btn.classList.add('on');document.getElementById('p-'+id).classList.add('on');if(id==='screen'){updStats();render();}if(id==='history'){renderHistory();}}
+function filterDept(d,btn){activeDeptFilter=d;document.querySelectorAll('.dp').forEach(p=>p.classList.remove('on'));btn.classList.add('on');render();}
 
+// ============================================================
+// UPLOAD
+// ============================================================
 const dz=document.getElementById('dz');
 dz.addEventListener('dragover',e=>{e.preventDefault();dz.classList.add('over');});
 dz.addEventListener('dragleave',()=>dz.classList.remove('over'));
 dz.addEventListener('drop',e=>{e.preventDefault();dz.classList.remove('over');addFiles(e.dataTransfer.files);});
-
 function addFiles(files){
-  Array.from(files).forEach(f=>{
-    if(/\.(pdf|doc|docx)$/i.test(f.name)){
-      const id='f'+Date.now()+Math.random().toString(36).slice(2);
-      if(!queue.find(q=>q.file.name===f.name&&q.file.size===f.size)){
-        queue.push({file:f,id,st:'pending'});
-        cvFiles[id]=f; // store file for preview
-      }
-    }
-  });
+  Array.from(files).forEach(f=>{if(/\.(pdf|doc|docx)$/i.test(f.name)&&!queue.find(q=>q.file.name===f.name&&q.file.size===f.size)){const id='f'+Date.now()+Math.random().toString(36).slice(2);queue.push({file:f,id,st:'pending'});}});
   renderQ();
 }
-
 function renderQ(){
-  document.getElementById('fq').innerHTML=queue.map(f=>`
-    <div class="fi">
-      <span style="font-size:16px">${f.file.name.toLowerCase().endsWith('.pdf')?'📄':'📝'}</span>
-      <span class="fi-name">${f.file.name}</span>
-      <span class="fi-size">${(f.file.size/1024).toFixed(0)} KB</span>
-      <span class="bdg ${f.st==='done'?'bdg-g':f.st==='processing'?'bdg-b':f.st==='error'?'bdg-r':'bdg-a'}">${f.st==='pending'?'Waiting':f.st==='processing'?'Analysing...':f.st==='done'?'Done':'Error'}</span>
-    </div>`).join('');
+  document.getElementById('fq').innerHTML=queue.map(f=>`<div class="fi"><span style="font-size:13px">${f.file.name.toLowerCase().endsWith('.pdf')?'📄':'📝'}</span><span class="fi-name">${f.file.name}</span><span style="font-size:10px;color:#9ca3af">${(f.file.size/1024).toFixed(0)}KB</span><span class="bdg ${f.st==='done'?'bdg-g':f.st==='processing'?'bdg-b':f.st==='error'?'bdg-r':'bdg-a'}">${f.st==='pending'?'Waiting':f.st==='processing'?'Analysing...':f.st==='done'?'Done':'Error'}</span></div>`).join('');
   const p=queue.filter(f=>f.st==='pending').length;
-  const br=document.getElementById('btnRow');
-  if(p>0&&!busy){br.style.display='flex';document.getElementById('analyseBtn').textContent=`🤖 Analyse ${p} CV${p>1?'s':''} with AI`;}
-  else if(!busy){br.style.display='none';}
+  const ab=document.getElementById('analyseBtn'),cb=document.getElementById('clearBtn');
+  if(p>0&&!busy){ab.style.display='inline-flex';ab.textContent='🤖 Analyse '+p+' CV'+(p>1?'s':'')+' with AI';cb.style.display='inline-flex';}else if(!busy){ab.style.display='none';}
 }
-function showErr(msg){document.getElementById('errBox').innerHTML=msg?`<div class="err">⚠ ${msg}</div>`:'';}
-function clearQ(){queue=[];document.getElementById('fq').innerHTML='';document.getElementById('btnRow').style.display='none';showErr('');document.getElementById('progWrap').style.display='none';}
+function showErr(m){document.getElementById('errBox').innerHTML=m?`<div class="errbox">⚠ ${m}</div>`:'';}
+function clearQ(){queue=[];document.getElementById('fq').innerHTML='';document.getElementById('analyseBtn').style.display='none';document.getElementById('clearBtn').style.display='none';showErr('');document.getElementById('progWrap').style.display='none';}
+
+// AI PROMPT
+const PROMPT=`You are screening CVs for OnCredit, a financial services company in Sri Lanka. Score for FIVE departments.
+COLLECTION (LOW salary, entry-level): SUITABLE=school leavers O/L/A/L, HND/Diploma, call centre/debt recovery(STRONG+), 0-3yrs. NOT SUITABLE=BSc+4+yrs.
+PHONE VERIFICATION: SUITABLE=good communication, computer literate, detail-oriented, any education.
+CUSTOMER SUPPORT: SUITABLE=customer service exp, empathy, communication, English proficiency.
+CALL QUALITY CHECK: SUITABLE=QA exp, call monitoring, analytical, senior call centre background.
+FINANCE: SUITABLE=accounting/finance degree, AAT/CIMA/ACCA, finance exp.
+Return ONLY JSON (no markdown, no backticks):
+{"name":"Full name","dob":"DOB or empty","age":"age number string or empty","nic":"NIC or empty","phone":"phone +94 or empty","phone2":"second phone or empty","email":"email or empty","address":"address/area or empty","district":"district or empty","education":"highest qualification","experience":"X years, last role","currentEmployer":"company or empty","languages":"languages or empty","skills":["s1","s2","s3","s4","s5"],"callCenterExp":true,"availability":"availability or empty","gender":"Male or Female or empty","maritalStatus":"Single or Married or empty","references":"count or empty","departments":{"Collection":{"score":75,"suitable":true,"reason":"brief"},"Phone Verification":{"score":60,"suitable":true,"reason":"brief"},"Customer Support":{"score":80,"suitable":true,"reason":"brief"},"Call Quality":{"score":30,"suitable":false,"reason":"brief"},"Finance":{"score":10,"suitable":false,"reason":"brief"}},"overallScore":72,"overallStatus":"suitable","overallReason":"2-3 sentences","redFlags":"concern or empty"}`;
 
 async function analyse(){
-  if(!getKey()){showErr('Please enter your Anthropic API key at the top first.');return;}
-  if(!getKey().startsWith('sk-ant-')){showErr('API key should start with "sk-ant-" — please check.');return;}
-  busy=true;document.getElementById('btnRow').style.display='none';showErr('');
-  const pending=queue.filter(f=>f.st==='pending'),total=pending.length;
-  let done=0;
-  const pw=document.getElementById('progWrap'),pf=document.getElementById('progFill'),pt=document.getElementById('progTxt');
-  pw.style.display='block';
-
+  if(!getKey()){showErr('Please enter your Anthropic API key first.');return;}
+  if(!getKey().startsWith('sk-ant-')){showErr('API key should start with "sk-ant-"');return;}
+  busy=true;document.getElementById('analyseBtn').style.display='none';showErr('');
+  const pending=queue.filter(f=>f.st==='pending');const total=pending.length;let done=0;
+  const pw=document.getElementById('progWrap'),pf=document.getElementById('progFill'),pt=document.getElementById('progTxt');pw.style.display='block';
   for(let fObj of pending){
-    fObj.st='processing';
-    pt.textContent=`Analysing ${fObj.file.name} (${done+1} of ${total})...`;
-    pf.style.width=Math.round((done/total)*100)+'%';
-    renderQ();
+    fObj.st='processing';pt.textContent=`Analysing ${fObj.file.name} (${done+1}/${total})...`;pf.style.width=Math.round((done/total)*100)+'%';renderQ();
     try{
       const b64=await toB64(fObj.file);
       const isPdf=fObj.file.name.toLowerCase().endsWith('.pdf');
       const mt=isPdf?'application/pdf':'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
-      const res=await fetch('https://api.anthropic.com/v1/messages',{
-        method:'POST',
-        headers:{'Content-Type':'application/json','x-api-key':getKey(),'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
-        body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:1500,messages:[{role:'user',content:[
-          {type:'document',source:{type:'base64',media_type:mt,data:b64}},
-          {type:'text',text:PROMPT}
-        ]}]})
-      });
+      const res=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json','x-api-key':getKey(),'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:1500,messages:[{role:'user',content:[{type:'document',source:{type:'base64',media_type:mt,data:b64}},{type:'text',text:PROMPT}]}]})});
       if(!res.ok){const e=await res.json().catch(()=>({}));throw new Error(e.error?.message||`API error ${res.status}`);}
       const data=await res.json();
       const txt=data.content.map(i=>i.text||'').join('');
       const clean=txt.replace(/```json\s*/g,'').replace(/```\s*/g,'').trim();
       const parsed=JSON.parse(clean);
-      parsed.id=fObj.id;parsed.filename=fObj.file.name;
-      cands.push(parsed);fObj.st='done';
+      parsed.id=fObj.id;parsed.filename=fObj.file.name;parsed.uploadedAt=new Date().toISOString();
+      parsed.uploadedBy=currentUser?.name||'Unknown';
+      parsed.cvStatus='pending';parsed.contacted=false;parsed.remarks='';parsed.selectedDept='';
+      cvBlobs[fObj.id]=URL.createObjectURL(fObj.file);
+      await fbAdd(parsed);
+      fObj.st='done';
     }catch(e){fObj.st='error';showErr(`Error on "${fObj.file.name}": ${e.message}`);}
     done++;renderQ();
   }
-  busy=false;
-  pf.style.width='100%';
-  pt.textContent=`✅ Done! ${cands.length} CV${cands.length!==1?'s':''} screened.`;
-  updStats();render();
-  document.getElementById('tab-res').textContent=`📊 Results (${cands.length})`;
-  if(cands.length>0){
-    document.getElementById('btnRow').style.display='flex';
-    document.getElementById('btnRow').innerHTML=`<button class="btn btn-p" onclick="goResults()">View Results →</button><button class="btn" onclick="clearQ()">Clear queue</button>`;
-  }
-}
-
-function goResults(){
-  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('on'));
-  document.querySelectorAll('.pane').forEach(p=>p.classList.remove('on'));
-  document.getElementById('tab-res').classList.add('on');document.getElementById('p-results').classList.add('on');
+  busy=false;pf.style.width='100%';pt.textContent=`✅ Done! ${cands.length} CVs in system.`;
+  document.getElementById('analyseBtn').textContent='View Results →';
+  document.getElementById('analyseBtn').onclick=()=>{swTab('screen',document.getElementById('tab-screen'));};
+  document.getElementById('analyseBtn').style.display='inline-flex';
 }
 function toB64(file){return new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(r.result.split(',')[1]);r.onerror=()=>rej(new Error('Read failed'));r.readAsDataURL(file);});}
 
+// ============================================================
+// STATS
+// ============================================================
 function updStats(){
-  const s=cands.filter(c=>c.overallStatus==='suitable').length;
-  const rv=cands.filter(c=>c.overallStatus==='review').length;
-  const u=cands.filter(c=>c.overallStatus==='unsuitable').length;
-  const multi=cands.filter(c=>c.departments&&Object.values(c.departments).filter(d=>d.suitable).length>1).length;
   document.getElementById('sT').textContent=cands.length;
-  document.getElementById('sS').textContent=s;
-  document.getElementById('sR').textContent=rv;
-  document.getElementById('sU').textContent=u;
-  document.getElementById('sD').textContent=multi;
+  document.getElementById('sS').textContent=cands.filter(c=>c.overallStatus==='suitable').length;
+  document.getElementById('sR').textContent=cands.filter(c=>c.overallStatus==='review').length;
+  document.getElementById('sU').textContent=cands.filter(c=>c.cvStatus==='rejected').length;
+  document.getElementById('sC').textContent=cands.filter(c=>c.contacted).length;
+  document.getElementById('sJ').textContent=cands.filter(c=>c.cvStatus==='joined').length;
 }
 
+// ============================================================
+// RENDER
+// ============================================================
 function avColor(name){let h=0;for(let c of(name||'?'))h+=c.charCodeAt(0);return AC[h%AC.length];}
 function initials(name){if(!name)return'??';const p=name.trim().split(' ');return(p.length>=2?p[0][0]+p[p.length-1][0]:name.slice(0,2)).toUpperCase();}
-function ig(label,val,href){
-  const empty=!val||String(val).trim()==='';
-  const display=empty?'Not found':href?`<a href="${href}" target="_blank">${val}</a>`:String(val);
-  return `<div class="ig"><div class="ig-label">${label}</div><div class="ig-val${empty?' empty':''}">${display}</div></div>`;
-}
+function ig(label,val,href){const empty=!val||String(val).trim()==='';const display=empty?'Not found':href?`<a href="${href}" target="_blank">${val}</a>`:String(val);return`<div class="ig"><div class="ig-label">${label}</div><div class="ig-val${empty?' empty':''}">${display}</div></div>`;}
+function fmtDate(iso){if(!iso)return'—';try{return new Date(iso).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'});}catch(e){return iso;}}
 
 function render(){
   const cards=document.getElementById('cards');
-  if(!cands.length){cards.innerHTML='<div class="empty-state">No CVs screened yet.</div>';return;}
-  const fst=document.getElementById('fSt').value,fso=document.getElementById('fSo').value;
   let items=[...cands];
-
-  // dept filter
-  if(activeDeptFilter!=='all'){
-    items=items.filter(c=>{
-      if(!c.departments)return false;
-      return c.departments[activeDeptFilter]&&c.departments[activeDeptFilter].suitable;
-    });
-  }
-  // status filter
-  if(fst==='suitable')items=items.filter(c=>c.overallStatus==='suitable');
-  else if(fst==='review')items=items.filter(c=>c.overallStatus==='review');
-  else if(fst==='unsuitable')items=items.filter(c=>c.overallStatus==='unsuitable');
-
-  // sort
+  const search=(document.getElementById('searchBox').value||'').toLowerCase();
+  const fst=document.getElementById('fSt').value;
+  const fcon=document.getElementById('fContact').value;
+  const fso=document.getElementById('fSo').value;
+  if(search)items=items.filter(c=>(c.name||'').toLowerCase().includes(search)||(c.nic||'').toLowerCase().includes(search)||(c.phone||'').includes(search)||(c.phone2||'').includes(search));
+  if(activeDeptFilter!=='all')items=items.filter(c=>c.departments&&c.departments[activeDeptFilter]&&c.departments[activeDeptFilter].suitable);
+  if(fst!=='all')items=items.filter(c=>c.cvStatus===fst);
+  if(fcon==='yes')items=items.filter(c=>c.contacted);
+  if(fcon==='no')items=items.filter(c=>!c.contacted);
   if(fso==='score')items.sort((a,b)=>(b.overallScore||0)-(a.overallScore||0));
   else if(fso==='name')items.sort((a,b)=>(a.name||'').localeCompare(b.name||''));
-  else if(fso==='status'){const o={suitable:0,review:1,unsuitable:2};items.sort((a,b)=>o[a.overallStatus]-o[b.overallStatus]);}
-  else if(fso==='depts')items.sort((a,b)=>{
-    const da=a.departments?Object.values(a.departments).filter(d=>d.suitable).length:0;
-    const db=b.departments?Object.values(b.departments).filter(d=>d.suitable).length:0;
-    return db-da;
-  });
+  else items.sort((a,b)=>new Date(b.uploadedAt||0)-new Date(a.uploadedAt||0));
 
   const cls={suitable:'s',review:'rv',unsuitable:'u'};
   const col={suitable:'#16a34a',review:'#d97706',unsuitable:'#dc2626'};
   const lbl={suitable:'✅ Suitable',review:'⚠ Review',unsuitable:'❌ Not Suitable'};
-  const bdg={suitable:'bdg-g',review:'bdg-a',unsuitable:'bdg-r'};
+  const obdg={suitable:'bdg-g',review:'bdg-a',unsuitable:'bdg-r'};
+  if(!items.length){cards.innerHTML='<div class="empty-state">No candidates match this filter.</div>';updSelCount();return;}
 
   cards.innerHTML=items.map(c=>{
-    const av=avColor(c.name);
-    const chk=selIds.has(c.id)?'checked':'';
-    const skills=(c.skills||[]).slice(0,6).map(s=>`<span class="bdg bdg-b">${s}</span>`).join('');
-    const rf=c.redFlags?`<div style="margin-top:5px;font-size:12px;color:#991b1b;font-weight:700">⚠ ${c.redFlags}</div>`:'';
-    const ph=(c.phone||'').replace(/[\s\-()]/g,'');
-    const waNum=ph.replace('+','');
-    const loc=[c.address,c.district].filter(Boolean).join(c.address&&c.district?' · ':'');
-    let ageStr=c.age?c.age+' yrs':'';
-    if(!ageStr&&c.dob){try{const yr=new Date().getFullYear()-new Date(c.dob).getFullYear();if(yr>14&&yr<70)ageStr=yr+' yrs';}catch(e){}}
+    const av=avColor(c.name);const chk=selIds.has(c.id)?'checked':'';
+    const skills=(c.skills||[]).slice(0,5).map(s=>`<span class="bdg bdg-b">${s}</span>`).join('');
+    const rf=c.redFlags?`<span style="color:#991b1b;font-weight:700"> ⚠ ${c.redFlags}</span>`:'';
+    const ph=(c.phone||'').replace(/[\s\-()]/g,'');const wa=ph.replace('+','');
+    const loc=[c.address,c.district].filter(Boolean).join(' · ');
+    let ageStr=c.age?c.age+' yrs':'';if(!ageStr&&c.dob){try{const yr=new Date().getFullYear()-new Date(c.dob).getFullYear();if(yr>14&&yr<70)ageStr=yr+' yrs';}catch(e){}}
     const dobStr=c.dob?`${c.dob}${ageStr?' ('+ageStr+')':''}`:ageStr||'';
-
-    // dept tags
-    const deptTags=DEPTS.map(d=>{
-      const di=c.departments&&c.departments[d.id];
-      if(!di)return '';
-      const suitable=di.suitable;
-      return `<span class="dept-tag" style="background:${suitable?d.db:'#f9fafb'};color:${suitable?d.dc:'#9ca3af'};border-color:${suitable?d.dc:'#e5e7eb'}" title="${di.reason||''}">${d.emoji} ${d.label}${suitable?' '+di.score+'%':' —'}</span>`;
-    }).join('');
-
-    // suitable depts list for primary dept in message
-    const suitableDepts=DEPTS.filter(d=>c.departments&&c.departments[d.id]&&c.departments[d.id].suitable).map(d=>d.id).join(', ');
-
-    return `<div class="card ${cls[c.overallStatus||'unsuitable']}">
+    const deptTags=DEPTS.map(d=>{const di=c.departments&&c.departments[d.id];if(!di)return'';return`<span class="dept-tag" style="background:${di.suitable?d.db:'#f9fafb'};color:${di.suitable?d.dc:'#9ca3af'};border-color:${di.suitable?d.dc:'#e5e7eb'}" title="${di.reason||''}">${d.emoji} ${d.label}${di.suitable?' '+di.score+'%':' —'}</span>`;}).join('');
+    const suitDepts=DEPTS.filter(d=>c.departments&&c.departments[d.id]&&c.departments[d.id].suitable).map(d=>d.id).join(',');
+    const statusCls=STATUS_COLORS[c.cvStatus]||'bdg-gr';
+    const hasCv=!!cvBlobs[c.id];
+    return `<div class="card ${cls[c.overallStatus||'unsuitable']}" id="card-${c.id}">
       <div class="card-top">
-        <input type="checkbox" ${chk} data-id="${c.id}" onchange="togSel('${c.id}',this)" style="margin-top:13px;width:15px;height:15px;flex-shrink:0;cursor:pointer">
+        <input type="checkbox" ${chk} data-id="${c.id}" onchange="togSel('${c.id}',this)" style="margin-top:12px;width:13px;height:13px;flex-shrink:0;cursor:pointer">
         <div class="av" style="background:${av.bg};color:${av.tx}">${initials(c.name)}</div>
         <div class="ci">
-          <div class="cn">
-            ${c.name||'Unknown'}
-            <span class="bdg ${bdg[c.overallStatus||'unsuitable']}">${lbl[c.overallStatus||'unsuitable']}</span>
-            ${c.callCenterExp?'<span class="bdg bdg-b">📞 Call Centre</span>':''}
-            ${c.gender?`<span class="bdg bdg-gr">${c.gender}</span>`:''}
-          </div>
-          <div class="cm">${c.education||'—'} · ${c.experience||'—'}</div>
-          <div class="sb">
-            <span style="font-size:12px;color:#9ca3af;min-width:72px;font-weight:700">Match ${c.overallScore||0}%</span>
-            <div class="st"><div class="sf" style="width:${c.overallScore||0}%;background:${col[c.overallStatus||'unsuitable']}"></div></div>
-          </div>
+          <div class="cn">${c.name||'Unknown'}<span class="bdg ${obdg[c.overallStatus||'unsuitable']}">${lbl[c.overallStatus||'unsuitable']}</span><span class="bdg ${statusCls}">${c.cvStatus||'pending'}</span>${c.callCenterExp?'<span class="bdg bdg-b">📞</span>':''}${c.contacted?'<span class="bdg bdg-g">✓ Contacted</span>':''}</div>
+          <div class="cm">${c.education||'—'} · ${c.experience||'—'} · ${fmtDate(c.uploadedAt)} by ${c.uploadedBy||'—'}</div>
+          <div class="sb"><span style="font-size:10px;color:#9ca3af;min-width:66px;font-weight:700">AI ${c.overallScore||0}%</span><div class="st"><div class="sf" style="width:${c.overallScore||0}%;background:${col[c.overallStatus||'unsuitable']}"></div></div></div>
         </div>
         <div class="cact">
-          <button class="view-cv-btn" onclick="viewCV('${c.id}','${(c.name||'CV').replace(/'/g,"\\'")}')">👁 View CV</button>
-          <button class="btn" style="font-size:12px;padding:5px 11px" onclick="openC('${c.id}','email','${suitableDepts.replace(/'/g,"\\'")}')">📧 Email</button>
-          <button class="btn btn-g" style="font-size:12px;padding:5px 11px" onclick="openC('${c.id}','whatsapp','${suitableDepts.replace(/'/g,"\\'")}')">💬 WhatsApp</button>
+          ${hasCv?`<button class="btn" style="font-size:10px;padding:3px 8px;background:#eff6ff;color:#2563eb;border-color:#bfdbfe" onclick="viewCV('${c.id}','${(c.name||'').replace(/'/g,"\\'")}')">👁 View CV</button>`:`<button class="btn" style="font-size:10px;padding:3px 8px;color:#9ca3af" disabled title="Re-upload to view">👁</button>`}
+          <button class="btn" style="font-size:10px;padding:3px 8px" onclick="openC('${c.id}','email','${suitDepts}')">📧</button>
+          <button class="btn btn-g" style="font-size:10px;padding:3px 8px" onclick="openC('${c.id}','whatsapp','${suitDepts}')">💬</button>
         </div>
       </div>
-
-      <div class="dept-tags">${deptTags||'<span style="font-size:12px;color:#9ca3af">No department match found</span>'}</div>
-
+      <div class="dept-tags-row">${deptTags||'<span style="font-size:10px;color:#9ca3af">No department match</span>'}</div>
+      <div class="card-controls">
+        <span class="ctrl-label">Status:</span>
+        <select class="ctrl-select" onchange="updateField('${c.id}','cvStatus',this.value)">
+          <option ${c.cvStatus==='pending'?'selected':''} value="pending">⏳ Pending</option>
+          <option ${c.cvStatus==='selected'?'selected':''} value="selected">✅ Selected</option>
+          <option ${c.cvStatus==='on hold'?'selected':''} value="on hold">⏸ On Hold</option>
+          <option ${c.cvStatus==='offered'?'selected':''} value="offered">💼 Offered</option>
+          <option ${c.cvStatus==='joined'?'selected':''} value="joined">✔ Joined</option>
+          <option ${c.cvStatus==='rejected'?'selected':''} value="rejected">❌ Rejected</option>
+          <option ${c.cvStatus==='not interested'?'selected':''} value="not interested">🚫 Not Interested</option>
+          <option ${c.cvStatus==='did not attend'?'selected':''} value="did not attend">🚷 Did Not Attend</option>
+        </select>
+        <span class="ctrl-label">Dept:</span>
+        <select class="ctrl-select" onchange="updateField('${c.id}','selectedDept',this.value)">
+          <option value="">— Select —</option>
+          ${DEPTS.map(d=>`<option ${c.selectedDept===d.id?'selected':''} value="${d.id}">${d.emoji} ${d.label}</option>`).join('')}
+        </select>
+        <button class="contact-toggle${c.contacted?' contacted':''}" onclick="toggleContacted('${c.id}')">${c.contacted?'✓ Contacted':'📵 Not Contacted'}</button>
+        <input class="remarks-input" placeholder="Remarks / notes..." value="${(c.remarks||'').replace(/"/g,'&quot;')}" onchange="updateField('${c.id}','remarks',this.value)">
+      </div>
       <div class="ig-section">
         <div class="ig-title">Contact &amp; Personal Details</div>
         <div class="info-grid">
-          ${ig('📞 Phone',c.phone,ph?`tel:${ph}`:'')}
-          ${ig('📱 Phone 2',c.phone2)}
-          ${ig('📧 Email',c.email,c.email?`mailto:${c.email}`:'')}
-          ${ig('💬 WhatsApp',waNum?'Open chat':'',waNum?`https://wa.me/${waNum}`:'')}
-          ${ig('🏠 Location',loc)}
-          ${ig('🪪 NIC Number',c.nic)}
-          ${ig('🎂 Age / DOB',dobStr)}
-          ${ig('👤 Gender',c.gender)}
-          ${ig('💍 Marital Status',c.maritalStatus)}
-          ${ig('🗣 Languages',c.languages)}
-          ${ig('🏢 Current Employer',c.currentEmployer)}
-          ${ig('⏰ Availability',c.availability)}
+          ${ig('📞 Phone',c.phone,ph?`tel:${ph}`:'')}${ig('📱 Phone 2',c.phone2)}${ig('📧 Email',c.email,c.email?`mailto:${c.email}`:'')}${ig('💬 WhatsApp',wa?'Open chat':'',wa?`https://wa.me/${wa}`:'')}${ig('🏠 Location',loc)}${ig('🪪 NIC',c.nic)}${ig('🎂 Age/DOB',dobStr)}${ig('👤 Gender',c.gender)}${ig('💍 Marital',c.maritalStatus)}${ig('🗣 Languages',c.languages)}${ig('🏢 Employer',c.currentEmployer)}${ig('⏰ Available',c.availability)}
         </div>
       </div>
-
-      <div class="assessment">
-        <div class="assess-label">AI Assessment</div>
-        <div class="assess-reason">${c.overallReason||''}${rf}</div>
-        <div class="skills-row">${skills}</div>
-      </div>
+      <div class="assessment"><div class="albl">AI Assessment</div><div class="areason">${c.overallReason||''}${rf}</div><div class="skills-row">${skills}</div></div>
     </div>`;
   }).join('');
-
-  if(!items.length)cards.innerHTML=`<div class="empty-state">No candidates match the current filter.</div>`;
   updSelCount();
 }
 
-// CV VIEWER
-function viewCV(id,name){
-  const file=cvFiles[id];
-  if(!file){alert('CV file not available. Please re-upload this CV in the current session.');return;}
-  document.getElementById('cvModalTitle').textContent='CV — '+name;
-  const url=URL.createObjectURL(file);
-  const isPdf=file.name.toLowerCase().endsWith('.pdf');
-  const content=document.getElementById('cvContent');
-  document.getElementById('cvDownloadBtn').onclick=()=>{const a=document.createElement('a');a.href=url;a.download=file.name;a.click();};
-  if(isPdf){
-    content.innerHTML=`<iframe src="${url}#toolbar=1&navpanes=0" style="width:100%;height:100%;border:none"></iframe>`;
-  }else{
-    // For DOCX — download prompt + message
-    content.innerHTML=`<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;gap:16px;background:#fff;padding:40px;text-align:center">
-      <div style="font-size:48px">📝</div>
-      <div style="font-size:16px;font-weight:700;color:#374151">${file.name}</div>
-      <div style="font-size:13px;color:#9ca3af;max-width:360px">Word documents cannot be previewed directly in the browser. Click the Download button above to open it in Microsoft Word or Google Docs.</div>
-      <button class="btn btn-p" onclick="document.getElementById('cvDownloadBtn').click()">⬇ Download & Open</button>
-    </div>`;
-  }
-  document.getElementById('cvModal').classList.add('on');
+async function updateField(id,field,value){
+  const c=cands.find(x=>x.id===id);if(!c)return;
+  c[field]=value;
+  await fbSave(id,{[field]:value});
+  if(field==='cvStatus')render();
+  updStats();
 }
+async function toggleContacted(id){
+  const c=cands.find(x=>x.id===id);if(!c)return;
+  c.contacted=!c.contacted;
+  await fbSave(id,{contacted:c.contacted});
+  render();updStats();
+}
+
+// ============================================================
+// HISTORY
+// ============================================================
+function renderHistory(){
+  const search=(document.getElementById('histSearch').value||'').toLowerCase();
+  const deptF=document.getElementById('histDept').value;
+  const statF=document.getElementById('histStatus').value;
+  let items=[...cands];
+  if(search)items=items.filter(c=>(c.name||'').toLowerCase().includes(search)||(c.nic||'').toLowerCase().includes(search)||(c.phone||'').includes(search));
+  if(deptF!=='all')items=items.filter(c=>c.departments&&c.departments[deptF]&&c.departments[deptF].suitable);
+  if(statF!=='all')items=items.filter(c=>c.cvStatus===statF);
+  items.sort((a,b)=>new Date(b.uploadedAt||0)-new Date(a.uploadedAt||0));
+  const tbody=document.getElementById('histBody');
+  if(!items.length){tbody.innerHTML='<tr><td colspan="15" style="text-align:center;padding:20px;color:#9ca3af">No records found</td></tr>';return;}
+  tbody.innerHTML=items.map((c,i)=>{
+    const suitDepts=DEPTS.filter(d=>c.departments&&c.departments[d.id]&&c.departments[d.id].suitable).map(d=>d.emoji+' '+d.label).join(', ')||'—';
+    const statusCls=STATUS_COLORS[c.cvStatus]||'bdg-gr';const hasCv=!!cvBlobs[c.id];
+    return`<tr>
+      <td style="color:#9ca3af;font-weight:700">${i+1}</td>
+      <td style="font-weight:700;white-space:nowrap">${c.name||'—'}</td>
+      <td style="white-space:nowrap;font-size:11px">${c.phone||'—'}${c.phone2?'<br><span style="color:#9ca3af">'+c.phone2+'</span>':''}</td>
+      <td style="font-family:monospace;font-size:10px">${c.nic||'—'}</td>
+      <td style="font-size:10px">${[c.district,c.address].filter(Boolean).join(', ')||'—'}</td>
+      <td style="font-size:10px;max-width:110px">${c.education||'—'}</td>
+      <td style="font-size:10px;max-width:120px">${c.experience||'—'}</td>
+      <td><span style="font-weight:800;color:${(c.overallScore||0)>=70?'#16a34a':(c.overallScore||0)>=40?'#d97706':'#dc2626'}">${c.overallScore||0}%</span></td>
+      <td style="font-size:10px;max-width:130px">${suitDepts}</td>
+      <td><span class="bdg ${statusCls}">${c.cvStatus||'pending'}</span></td>
+      <td><span class="bdg ${c.contacted?'bdg-g':'bdg-gr'}">${c.contacted?'Yes':'No'}</span></td>
+      <td style="font-size:10px;max-width:130px;color:#6b7280">${c.remarks||'—'}</td>
+      <td style="font-size:10px;color:#9ca3af;white-space:nowrap">${c.uploadedBy||'—'}</td>
+      <td style="font-size:10px;white-space:nowrap;color:#9ca3af">${fmtDate(c.uploadedAt)}</td>
+      <td style="white-space:nowrap">
+        ${hasCv?`<button class="btn" style="font-size:9px;padding:2px 6px;margin-right:2px" onclick="viewCV('${c.id}','${(c.name||'').replace(/'/g,"\\'")}')">👁</button>`:''}
+        <button class="btn btn-red" style="font-size:9px;padding:2px 6px" onclick="deleteCV('${c.id}')">🗑</button>
+      </td>
+    </tr>`;
+  }).join('');
+}
+async function deleteCV(id){if(!confirm('Delete this CV record permanently?'))return;await fbDelete(id);cands=cands.filter(c=>c.id!==id);updStats();render();renderHistory();}
+
+// ============================================================
+// EXPORT
+// ============================================================
+function exportExcel(){
+  if(!cands.length){alert('No CVs to export.');return;}
+  const rows=cands.map((c,i)=>({'#':i+1,'Name':c.name||'','Phone':c.phone||'','Phone 2':c.phone2||'','Email':c.email||'','NIC':c.nic||'','District':c.district||'','Address':c.address||'','Age/DOB':c.dob||(c.age?c.age+' yrs':''),'Gender':c.gender||'','Marital Status':c.maritalStatus||'','Education':c.education||'','Experience':c.experience||'','Current Employer':c.currentEmployer||'','Languages':c.languages||'','Availability':c.availability||'','Call Centre Exp':c.callCenterExp?'Yes':'No','AI Score':c.overallScore||0,'AI Status':c.overallStatus||'','AI Reason':c.overallReason||'','Skills':(c.skills||[]).join(', '),'Suitable For':DEPTS.filter(d=>c.departments&&c.departments[d.id]&&c.departments[d.id].suitable).map(d=>d.label).join(', '),'Collection Score':c.departments?.Collection?.score||'','Phone Verification Score':c.departments?.['Phone Verification']?.score||'','Customer Support Score':c.departments?.['Customer Support']?.score||'','Call Quality Score':c.departments?.['Call Quality']?.score||'','Finance Score':c.departments?.Finance?.score||'','CV Status':c.cvStatus||'pending','Selected Dept':c.selectedDept||'','Contacted':c.contacted?'Yes':'No','Remarks':c.remarks||'','Red Flags':c.redFlags||'','Uploaded By':c.uploadedBy||'','Upload Date':fmtDate(c.uploadedAt),'Filename':c.filename||''}));
+  const ws=XLSX.utils.json_to_sheet(rows);ws['!cols']=[{wch:4},{wch:26},{wch:16},{wch:16},{wch:26},{wch:16},{wch:16},{wch:24},{wch:14},{wch:8},{wch:12},{wch:22},{wch:28},{wch:22},{wch:18},{wch:16},{wch:10},{wch:10},{wch:10},{wch:50},{wch:30},{wch:30}];
+  const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,'CV Screening',ws);
+  const sum=[['OnCredit CV Screening Summary',''],['Generated',new Date().toLocaleString()],['Total CVs',cands.length],['AI Suitable',cands.filter(c=>c.overallStatus==='suitable').length],['AI Review',cands.filter(c=>c.overallStatus==='review').length],['AI Not Suitable',cands.filter(c=>c.overallStatus==='unsuitable').length],['',''],['Status Breakdown',''],['Pending',cands.filter(c=>c.cvStatus==='pending').length],['Selected',cands.filter(c=>c.cvStatus==='selected').length],['On Hold',cands.filter(c=>c.cvStatus==='on hold').length],['Offered',cands.filter(c=>c.cvStatus==='offered').length],['Joined',cands.filter(c=>c.cvStatus==='joined').length],['Rejected',cands.filter(c=>c.cvStatus==='rejected').length],['Not Interested',cands.filter(c=>c.cvStatus==='not interested').length],['Did Not Attend',cands.filter(c=>c.cvStatus==='did not attend').length],['Contacted',cands.filter(c=>c.contacted).length],['',''],['Department Matches',''],...DEPTS.map(d=>[d.label+' suitable',cands.filter(c=>c.departments&&c.departments[d.id]&&c.departments[d.id].suitable).length])];
+  const ws2=XLSX.utils.aoa_to_sheet(sum);ws2['!cols']=[{wch:30},{wch:20}];XLSX.utils.book_append_sheet(wb,'Summary',ws2);
+  XLSX.writeFile(wb,'OnCredit_CV_Screening_'+new Date().toISOString().slice(0,10)+'.xlsx');
+}
+
+// CV VIEWER
+function viewCV(id,name){const url=cvBlobs[id];if(!url){alert('CV not available in this session.\n\nNote: CV files are stored temporarily per session. The screening data, status and remarks are saved permanently in Firebase.');return;}document.getElementById('cvTitle').textContent='CV — '+name;const cand=cands.find(c=>c.id===id);const isPdf=cand&&cand.filename&&cand.filename.toLowerCase().endsWith('.pdf');document.getElementById('cvDlBtn').onclick=()=>{const a=document.createElement('a');a.href=url;a.download=cand?.filename||'cv';a.click();};const content=document.getElementById('cvContent');if(isPdf){content.innerHTML=`<iframe src="${url}#toolbar=1" style="width:100%;height:100%;border:none"></iframe>`;}else{content.innerHTML=`<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;gap:12px;background:#fff;padding:30px;text-align:center"><div style="font-size:44px">📝</div><div style="font-size:14px;font-weight:700">${cand?.filename||'Word document'}</div><div style="font-size:12px;color:#9ca3af;max-width:300px">Word files cannot be previewed in browser. Download to open in Word or Google Docs.</div><button class="btn btn-p" onclick="document.getElementById('cvDlBtn').click()">⬇ Download & Open</button></div>`;}document.getElementById('cvModal').classList.add('on');}
 
 function togSel(id,el){if(el.checked)selIds.add(id);else selIds.delete(id);updSelCount();}
 function selAll(el){selIds.clear();document.querySelectorAll('.cards input[type=checkbox]').forEach(cb=>{cb.checked=el.checked;if(el.checked)selIds.add(cb.dataset.id);});updSelCount();}
@@ -654,65 +983,31 @@ function updSelCount(){const el=document.getElementById('sc');el.textContent=sel
 
 function openC(id,type,depts){
   const c=cands.find(x=>x.id===id);if(!c)return;
-  document.getElementById('mName').value=c.name||'';
-  document.getElementById('mType').value=type;
-  document.getElementById('mEmail').value=c.email||'';
-  document.getElementById('mPhone').value=c.phone||'';
-  document.getElementById('mDept').value=depts||(DEPTS.find(d=>c.departments&&c.departments[d.id]&&c.departments[d.id].suitable)||{id:''}).id;
+  document.getElementById('mName').value=c.name||'';document.getElementById('mType').value=type;document.getElementById('mEmail').value=c.email||'';document.getElementById('mPhone').value=c.phone||'';
+  const dept=c.selectedDept||(depts?depts.split(',')[0].trim():'');document.getElementById('mDept').value=dept;
   const fn=(c.name||'Candidate').split(' ')[0];
-  const dept=document.getElementById('mDept').value||'the relevant';
-  document.getElementById('mBody').value=document.getElementById('eTpl').value.replace(/{name}/g,fn).replace(/{dept}/g,dept);
-  document.getElementById('mWa').value=document.getElementById('wTpl').value.replace(/{name}/g,fn).replace(/{dept}/g,dept);
+  document.getElementById('mBody').value=document.getElementById('eTpl').value.replace(/{name}/g,fn).replace(/{dept}/g,dept||'relevant');
+  document.getElementById('mWa').value=document.getElementById('wTpl').value.replace(/{name}/g,fn).replace(/{dept}/g,dept||'relevant');
   togFields();document.getElementById('cModal').classList.add('on');
 }
 function togFields(){const t=document.getElementById('mType').value;document.getElementById('ef').style.display=t==='email'?'block':'none';document.getElementById('wf').style.display=t==='whatsapp'?'block':'none';}
 function closeMod(id){document.getElementById(id).classList.remove('on');}
-function doSend(){
-  const t=document.getElementById('mType').value;
-  const dept=document.getElementById('mDept').value||'the relevant';
-  if(t==='email'){
-    const em=document.getElementById('mEmail').value.trim();
-    const sub=document.getElementById('mSubj').value;
-    const body=document.getElementById('mBody').value.replace(/{dept}/g,dept);
-    if(em)window.open('mailto:'+em+'?subject='+encodeURIComponent(sub)+'&body='+encodeURIComponent(body));
-    else alert('No email found. Please enter manually.');
-  }else{
-    const ph=document.getElementById('mPhone').value.replace(/[\s\-()]/g,'');
-    const msg=document.getElementById('mWa').value.replace(/{dept}/g,dept);
-    if(ph)window.open('https://wa.me/'+ph.replace('+','')+'?text='+encodeURIComponent(msg));
-    else alert('No phone found. Please enter manually.');
-  }
-  closeMod('cModal');
+async function doSend(){
+  const t=document.getElementById('mType').value;const dept=document.getElementById('mDept').value||'relevant';
+  const name=document.getElementById('mName').value;const c=cands.find(x=>x.name===name);
+  if(t==='email'){const em=document.getElementById('mEmail').value.trim();const sub=document.getElementById('mSubj').value;const body=document.getElementById('mBody').value;if(em)window.open('mailto:'+em+'?subject='+encodeURIComponent(sub)+'&body='+encodeURIComponent(body));else alert('No email found. Please enter manually.');}
+  else{const ph=document.getElementById('mPhone').value.replace(/[\s\-()]/g,'');const msg=document.getElementById('mWa').value;if(ph)window.open('https://wa.me/'+ph.replace('+','')+'?text='+encodeURIComponent(msg));else alert('No phone found. Please enter manually.');}
+  if(c){c.contacted=true;await fbSave(c.id,{contacted:true});}
+  closeMod('cModal');render();
 }
-function openBulk(){
-  if(selIds.size===0){alert('Please select at least one candidate first.');return;}
-  document.getElementById('bCnt').textContent=selIds.size;
-  document.getElementById('bModal').classList.add('on');
+function openBulk(){if(selIds.size===0){alert('Please select candidates first.');return;}document.getElementById('bCnt').textContent=selIds.size;document.getElementById('bModal').classList.add('on');}
+async function doBulk(){
+  const t=document.getElementById('bType').value;const sel=cands.filter(c=>selIds.has(c.id));
+  sel.forEach((c,i)=>{const fn=(c.name||'Candidate').split(' ')[0];const dept=c.selectedDept||(DEPTS.find(d=>c.departments&&c.departments[d.id]&&c.departments[d.id].suitable)||{id:'relevant'}).id;setTimeout(async()=>{if(t==='email'&&c.email){const tpl=document.getElementById('eTpl').value.replace(/{name}/g,fn).replace(/{dept}/g,dept);window.open('mailto:'+c.email+'?subject='+encodeURIComponent('Interview Invitation — OnCredit')+'&body='+encodeURIComponent(tpl));}else if(t==='whatsapp'&&c.phone){const tpl=document.getElementById('wTpl').value.replace(/{name}/g,fn).replace(/{dept}/g,dept);window.open('https://wa.me/'+c.phone.replace(/[\s+\-()]/g,'')+'?text='+encodeURIComponent(tpl));}c.contacted=true;await fbSave(c.id,{contacted:true});},i*500);});
+  setTimeout(()=>{closeMod('bModal');const miss=sel.filter(c=>(t==='email'&&!c.email)||(t==='whatsapp'&&!c.phone));alert(`Sent to ${sel.length-miss.length} candidates.${miss.length?'\nSkipped (no contact): '+miss.map(c=>c.name).join(', '):''}`);},sel.length*500+300);
 }
-function doBulk(){
-  const t=document.getElementById('bType').value;
-  const sel=cands.filter(c=>selIds.has(c.id));
-  sel.forEach((c,i)=>{
-    const fn=(c.name||'Candidate').split(' ')[0];
-    const dept=(DEPTS.find(d=>c.departments&&c.departments[d.id]&&c.departments[d.id].suitable)||{id:'the relevant'}).id;
-    setTimeout(()=>{
-      if(t==='email'&&c.email){
-        const tpl=document.getElementById('eTpl').value.replace(/{name}/g,fn).replace(/{dept}/g,dept);
-        window.open('mailto:'+c.email+'?subject='+encodeURIComponent('Interview Invitation — OnCredit')+'&body='+encodeURIComponent(tpl));
-      }else if(t==='whatsapp'&&c.phone){
-        const tpl=document.getElementById('wTpl').value.replace(/{name}/g,fn).replace(/{dept}/g,dept);
-        window.open('https://wa.me/'+c.phone.replace(/[\s+\-()]/g,'')+'?text='+encodeURIComponent(tpl));
-      }
-    },i*500);
-  });
-  closeMod('bModal');
-  setTimeout(()=>{
-    const missing=sel.filter(c=>(t==='email'&&!c.email)||(t==='whatsapp'&&!c.phone));
-    let msg=`Opened ${sel.length-missing.length} message(s).`;
-    if(missing.length)msg+=`\n\n${missing.length} skipped (no ${t==='email'?'email':'phone'}):\n${missing.map(c=>c.name).join(', ')}`;
-    alert(msg);
-  },sel.length*500+400);
-}
+
+window.addEventListener('load',initApp);
 </script>
 </body>
 </html>
